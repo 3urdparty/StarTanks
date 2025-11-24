@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas>
+    <Texture>images/atlas</Texture>
+    <Regions>
+        <Region name="tiles_1" x="0" y="0" width="48" height="48" />
+        <Region name="tiles_2" x="48" y="0" width="16" height="48" />
+        <Region name="tiles_3" x="64" y="0" width="64" height="32" />
+        <Region name="missile_1" x="128" y="0" width="16" height="16" />
+        <Region name="missile_2" x="144" y="0" width="16" height="16" />
+        <Region name="missile_3" x="160" y="0" width="16" height="16" />
+        <Region name="missile_4" x="176" y="0" width="16" height="16" />
+        <Region name="cannon_ball" x="128" y="16" width="32" height="32" />
+        <Region name="cannon_ball_flat" x="160" y="16" width="32" height="32" />
+        <Region name="gun" x="160" y="48" width="32" height="32" />
+        <Region name="tiered_gun" x="160" y="48" width="32" height="32" />
+        <Region name="laser_gun" x="192" y="48" width="32" height="32" />
+
+        <Region name="satellite" x="0" y="64" width="32" height="64" />
+        <Region name="satellite" x="32" y="64" width="32" height="16" />
+        <Region name="water_tank" x="64" y="64" width="16" height="32" />
+        <Region name="radio" x="80" y="64" width="16" height="32" />
+
+        <Region name="solar-panel-1" x="48" y="80" width="16" height="16" />
+        <Region name="solar-panel-2" x="48" y="96" width="16" height="16" />
+
+
+    <!-- Explosion -->
+        <Region name="explosion-frame-0" x="0" y="128" width="32" height="32" />
+        <Region name="explosion-frame-1" x="32" y="128" width="32" height="32" />
+        <Region name="explosion-frame-2" x="64" y="128" width="32" height="32" />
+        <Region name="explosion-frame-3" x="96" y="128" width="32" height="32" />
+        <Region name="explosion-frame-4" x="128" y="128" width="32" height="32" />
+        <Region name="explosion-frame-5" x="160" y="128" width="32" height="32" />
+        <Region name="explosion-frame-6" x="192" y="128" width="32" height="32" />
+        <Region name="explosion-frame-7" x="224" y="128" width="32" height="32" />
+        <Region name="explosion-frame-8" x="256" y="128" width="32" height="32" />
+
+    </Regions>
+
+    <Animations>
+        <Animation name="explosion-animation" delay="200">
+            <Frame region="explosion-frame-0" />
+            <Frame region="explosion-frame-1" />
+            <Frame region="explosion-frame-2" />
+            <Frame region="explosion-frame-3" />
+            <Frame region="explosion-frame-4" />
+            <Frame region="explosion-frame-5"/>
+            <Frame region="explosion-frame-6"/>
+            <Frame region="explosion-frame-7"/>
+            <Frame region="explosion-frame-8"/>
+        </Animation>
+    </Animations>
+</TextureAtlas>
