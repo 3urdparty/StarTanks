@@ -55,7 +55,32 @@ namespace SpaceTanks
         public int TileSize => _tileSize;
         public int WorldWidth => _worldWidth;
         public int WorldHeight => _worldHeight;
+
+private bool _debugDrawCollisions = false;
+private Texture2D _debugPixel;
+
+// Collision outline as line segments
+private struct LineSegment
+{
+    public Vector2 Start;
+    public Vector2 End;
+
+    public LineSegment(Vector2 start, Vector2 end)
+    {
+        Start = start;
+        End = end;
+    }
+}
+
+private readonly List<LineSegment> _collisionEdges = new List<LineSegment>();
+
+public bool DebugDrawCollisions
+{
+    get => _debugDrawCollisions;
+    set => _debugDrawCollisions = value;
+}
         
+
         public ProceduralWorld(ContentManager content, int worldWidth, int worldHeight, int tileSize)
         {
             _content = content;
@@ -93,38 +118,96 @@ namespace SpaceTanks
             _innerAlt11 = _atlas.GetRegion("inner-alt-11");
         }
         
-        // Generate a platformer world with platforms at various heights
-        public void Generate(int seed = 0)
+public void Generate(int seed = 0)
+{
+    Random random = seed == 0 ? new Random() : new Random(seed);
+
+    // Clear the map
+    for (int x = 0; x < _worldWidth; x++)
+    {
+        for (int y = 0; y < _worldHeight; y++)
         {
-            Random random = seed == 0 ? new Random() : new Random(seed);
-            
-            // Clear the map
-            for (int x = 0; x < _worldWidth; x++)
-            {
-                for (int y = 0; y < _worldHeight; y++)
-                {
-                    _tileMap[x, y] = Empty;
-                }
-            }
-            
-            // Generate ground platform at bottom
-            GeneratePlatform(0, _worldWidth, _worldHeight - 4, 4);
-            
-            // Generate random floating platforms
-            int platformCount = random.Next(5, 10);
-            for (int i = 0; i < platformCount; i++)
-            {
-                int platformWidth = random.Next(4, 12);
-                int platformHeight = random.Next(2, 4);
-                int platformX = random.Next(0, _worldWidth - platformWidth);
-                int platformY = random.Next(2, _worldHeight - 8);
-                
-                GeneratePlatform(platformX, platformWidth, platformY, platformHeight);
-            }
-            
-            // Fill inner tiles randomly with inner-1 or inner-2
-            FillInnerTiles(random);
+            _tileMap[x, y] = Empty;
         }
+    }
+
+    // Generate ground platform at bottom
+    GeneratePlatform(0, _worldWidth, _worldHeight - 4, 4);
+
+    // Generate random floating platforms
+    int platformCount = random.Next(5, 10);
+    for (int i = 0; i < platformCount; i++)
+    {
+        int platformWidth = random.Next(4, 12);
+        int platformHeight = random.Next(2, 4);
+        int platformX = random.Next(0, _worldWidth - platformWidth);
+        int platformY = random.Next(2, _worldHeight - 8);
+
+        GeneratePlatform(platformX, platformWidth, platformY, platformHeight);
+    }
+
+    // Fill inner tiles
+    FillInnerTiles(random);
+
+    // Build collision edge outline
+    BuildCollisionEdges();
+}
+
+private void BuildCollisionEdges()
+{
+    _collisionEdges.Clear();
+
+    for (int x = 0; x < _worldWidth; x++)
+    {
+        for (int y = 0; y < _worldHeight; y++)
+        {
+            if (_tileMap[x, y] == Empty)
+                continue;
+
+            // World coordinates of this tile
+            float left   = x * _tileSize;
+            float right  = (x + 1) * _tileSize;
+            float top    = y * _tileSize;
+            float bottom = (y + 1) * _tileSize;
+
+            // Left edge: neighbor empty?
+            if (x == 0 || _tileMap[x - 1, y] == Empty)
+            {
+                _collisionEdges.Add(new LineSegment(
+                    new Vector2(left, top),
+                    new Vector2(left, bottom)
+                ));
+            }
+
+            // Right edge
+            if (x == _worldWidth - 1 || _tileMap[x + 1, y] == Empty)
+            {
+                _collisionEdges.Add(new LineSegment(
+                    new Vector2(right, top),
+                    new Vector2(right, bottom)
+                ));
+            }
+
+            // Top edge
+            if (y == 0 || _tileMap[x, y - 1] == Empty)
+            {
+                _collisionEdges.Add(new LineSegment(
+                    new Vector2(left, top),
+                    new Vector2(right, top)
+                ));
+            }
+
+            // Bottom edge
+            if (y == _worldHeight - 1 || _tileMap[x, y + 1] == Empty)
+            {
+                _collisionEdges.Add(new LineSegment(
+                    new Vector2(left, bottom),
+                    new Vector2(right, bottom)
+                ));
+            }
+        }
+    }
+}
         
         // Generate a single platform with proper corner tiles
         private void GeneratePlatform(int startX, int width, int startY, int height)
@@ -217,32 +300,132 @@ namespace SpaceTanks
             int endX = Math.Min(_worldWidth, (cameraBounds.Right / _tileSize) + 1);
             int startY = Math.Max(0, cameraBounds.Top / _tileSize);
             int endY = Math.Min(_worldHeight, (cameraBounds.Bottom / _tileSize) + 1);
-            
-            // Draw only visible tiles
-            for (int x = startX; x < endX; x++)
-            {
-                for (int y = startY; y < endY; y++)
-                {
-                    int tileType = _tileMap[x, y];
-                    if (tileType == Empty) continue;
-                    
-                    TextureRegion region = GetTileRegion(tileType);
-                    Vector2 position = new Vector2(x * _tileSize, y * _tileSize);
-                    
-                    region.Draw(
-                        spriteBatch,
-                        position,
-                        Color.White,
-                        0f,
-                        Vector2.Zero,
-                        new Vector2((float)_tileSize / region.Width, (float)_tileSize / region.Height),
-                        SpriteEffects.None,
-                        0f
-                    );
-                }
-            }
+
+// Existing tile drawing loop...
+for (int x = startX; x < endX; x++)
+{
+    for (int y = startY; y < endY; y++)
+    {
+        int tileType = _tileMap[x, y];
+        if (tileType == Empty) continue;
+        
+        TextureRegion region = GetTileRegion(tileType);
+        Vector2 position = new Vector2(x * _tileSize, y * _tileSize);
+        
+        region.Draw(
+            spriteBatch,
+            position,
+            Color.White,
+            0f,
+            Vector2.Zero,
+            new Vector2((float)_tileSize / region.Width, (float)_tileSize / region.Height),
+            SpriteEffects.None,
+            0f
+        );
+    }
+}
+
+// Debug overlay
+if (_debugDrawCollisions)
+{
+    DrawCollisionDebug(spriteBatch, cameraBounds);
+}
+
         }
         
+
+private void DrawCollisionDebug(SpriteBatch spriteBatch, Rectangle cameraBounds)
+{
+    if (_debugPixel == null)
+    {
+        // Get GraphicsDevice from ContentManager's service provider
+        var gfxService = (IGraphicsDeviceService)_content.ServiceProvider.GetService(typeof(IGraphicsDeviceService));
+        var graphicsDevice = gfxService.GraphicsDevice;
+
+        _debugPixel = new Texture2D(graphicsDevice, 1, 1);
+        _debugPixel.SetData(new[] { Color.White });
+    }
+
+    // 1) Draw solid tile rectangles in transparent red
+    int startX = Math.Max(0, cameraBounds.Left / _tileSize);
+    int endX   = Math.Min(_worldWidth, (cameraBounds.Right / _tileSize) + 1);
+    int startY = Math.Max(0, cameraBounds.Top / _tileSize);
+    int endY   = Math.Min(_worldHeight, (cameraBounds.Bottom / _tileSize) + 1);
+
+    Color fillColor = Color.Red * 0.25f;
+    int thickness = 2;
+
+    for (int x = startX; x < endX; x++)
+    {
+        for (int y = startY; y < endY; y++)
+        {
+            if (_tileMap[x, y] == Empty)
+                continue;
+
+            Rectangle tileBounds = new Rectangle(
+                x * _tileSize,
+                y * _tileSize,
+                _tileSize,
+                _tileSize
+            );
+
+            spriteBatch.Draw(
+                _debugPixel,
+                tileBounds,
+                fillColor
+            );
+        }
+    }
+
+    // 2) Draw collision edges as slightly stronger red lines
+    Color edgeColor = Color.Red * 0.7f;
+
+    foreach (var edge in _collisionEdges)
+    {
+        // Simple culling: skip edges far outside the camera
+        if (edge.End.X < cameraBounds.Left - _tileSize ||
+            edge.Start.X > cameraBounds.Right + _tileSize ||
+            edge.End.Y < cameraBounds.Top - _tileSize ||
+            edge.Start.Y > cameraBounds.Bottom + _tileSize)
+        {
+            continue;
+        }
+
+        // Axis-aligned edges only (our BuildCollisionEdges only makes those)
+        if (Math.Abs(edge.Start.X - edge.End.X) < 0.1f)
+        {
+            // Vertical line
+            float x = edge.Start.X;
+            float y = Math.Min(edge.Start.Y, edge.End.Y);
+            float length = Math.Abs(edge.End.Y - edge.Start.Y);
+
+            Rectangle rect = new Rectangle(
+                (int)x,
+                (int)y,
+                thickness,
+                (int)length
+            );
+
+            spriteBatch.Draw(_debugPixel, rect, edgeColor);
+        }
+        else if (Math.Abs(edge.Start.Y - edge.End.Y) < 0.1f)
+        {
+            // Horizontal line
+            float y = edge.Start.Y;
+            float x = Math.Min(edge.Start.X, edge.End.X);
+            float length = Math.Abs(edge.End.X - edge.Start.X);
+
+            Rectangle rect = new Rectangle(
+                (int)x,
+                (int)y,
+                (int)length,
+                thickness
+            );
+
+            spriteBatch.Draw(_debugPixel, rect, edgeColor);
+        }
+    }
+}
         private TextureRegion GetTileRegion(int tileType)
         {
             return tileType switch

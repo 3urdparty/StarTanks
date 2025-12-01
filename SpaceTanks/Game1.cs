@@ -4,14 +4,17 @@ using Microsoft.Xna.Framework.Input;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
 
+using System.Collections.Generic;
 namespace SpaceTanks;
 
+using System;
 public class Game1 : Core
 {
     private ProceduralWorld _world;
     private Tank _tank;
     private GraphicsDeviceManager _graphics;
-    private SpriteBatch _spriteBatch;
+    // In your Game class
+    List<Bullet> bullets = new List<Bullet>();
 
     private const float MOVEMENT_SPEED = 5.0f;
 
@@ -32,8 +35,10 @@ public class Game1 : Core
     protected override void LoadContent()
     {
         // Create world: 100 tiles wide, 30 tiles tall, 32 pixels per tile
-        _world = new ProceduralWorld(Content, 100, 30, 32);
+        _world = new ProceduralWorld(Content, 100, 30, 16);
+
         _world.Generate(10); // Use seed for consistent level
+_world.DebugDrawCollisions = true; // toggle debug view on
     }
 
     protected override void Update(GameTime gameTime)
@@ -65,6 +70,31 @@ public class Game1 : Core
             _tank.RotateGunRight(deltaTime);
         }
 
+        if (keyboardState.IsKeyDown(Keys.Space))
+        {
+            // When tank shoots
+            Bullet newBullet = _tank.Shoot();
+            if (newBullet != null)
+            {
+                bullets.Add(newBullet);
+            }
+        }
+
+          for (int i = bullets.Count - 1; i >= 0; i--)
+          {
+              bullets[i].Update(deltaTime, _world);
+
+
+              if (bullets[i].IsOutOfBounds(_world.WorldWidth * 16 , _world.WorldHeight * 16))
+              {
+
+                  bullets[i].Deactivate();
+                  bullets.RemoveAt(i);
+              }
+          }
+
+
+
         _tank.Update(gameTime, _world);
         base.Update(gameTime);
     }
@@ -83,6 +113,12 @@ public class Game1 : Core
 
         // Draw tank
         _tank.Draw(SpriteBatch);
+ 
+        // Draw all bullets
+        foreach (var bullet in bullets)
+        {
+            bullet.Draw(SpriteBatch);
+        }
 
         SpriteBatch.End();
 

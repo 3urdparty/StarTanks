@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TextureAtlas>
-    <Texture>images/TileSheet</Texture>
     <Regions>
+        <Texture>images/TileSheet-v1</Texture>
         <Region name="00" x="0" y="0" width="16" height="16" />
         <Region name="01" x="16" y="0" width="16" height="16" />
         <Region name="02" x="32" y="0" width="16" height="16" />

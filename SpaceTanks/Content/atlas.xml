@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas>
+    
+    <Regions>
+        <Texture name="tanks">images/Tracked_Vehicle</Texture>
+        <Region name="tank-green-1"  x="1" y="2" width="22" height="12" />
+        <Region name="tank-green-2"  x="25" y="2" width="22" height="12" />
+        <Region name="tank-red-1" x="49" y="2" width="22" height="12" />
+        <Region name="tank-red-2" x="49" y="2" width="22" height="12" />
+        <Region name="tank-blue-1" x="49" y="2" width="22" height="12" />
+        <Region name="tank-blue-2" x="49" y="2" width="22" height="12" />
+    </Regions>
+
+    <Regions>
+        <Texture name="turrets">images/Turrets</Texture>
+        <Region name="turret"  x="25" y="26" width="12" height="12" />
+        <Region name="missile-launcher"  x="90" y="26" width="11" height="12" />
+    </Regions>
+
+    <Regions>
+        <Texture name="guns">images/Guns</Texture>
+        <Region name="gun"  x="30" y="30" width="13" height="4" />
+    </Regions>
+
+    <Regions>
+        <Texture name="plasma">images/Fx_01</Texture>
+        <Region name="plasma-1"  x="3" y="7" width="10" height="3" />
+        <Region name="plasma-2"  x="17" y="6" width="13" height="5" />
+        <Region name="plasma-3"  x="37" y="5" width="10" height="3" />
+    </Regions>
+
+    <Regions>
+        <Texture name="bullet">images/Fx_02</Texture>
+        <Region name="bullet-1"  x="3" y="7" width="10" height="3" />
+        <Region name="bullet-2"  x="17" y="6" width="13" height="5" />
+        <Region name="bullet-3"  x="34" y="5" width="12" height="6" />
+    </Regions>
+
+    <Regions>
+        <Texture name="recoil">images/Fx_03</Texture>
+        <Region name="recoil-1"  x="1" y="1" width="14" height="13" />
+        <Region name="recoil-2"  x="18" y="1" width="12" height="13" />
+    </Regions>
+
+    <Regions>
+        <Texture name="tanks">images/Explosion</Texture>
+        <Region  name="explosion-frame-1" x="0" y="0" width="32" height="32" />
+        <Region  name="explosion-frame-2" x="32" y="0" width="32" height="32" />
+        <Region   name="explosion-frame-3" x="64" y="0" width="32" height="32" />
+        <Region  name="explosion-frame-4" x="96" y="0" width="32" height="32" />
+        <Region   name="explosion-frame-5" x="128" y="0" width="32" height="32" />
+        <Region  name="explosion-frame-6" x="160" y="0" width="32" height="32" />
+        <Region  name="explosion-frame-7" x="192" y="0" width="32" height="32" />
+    </Regions>
+
+    <Animations>
+        <Animation name="tank-green-moving" delay="200">
+            <Frame region="tank-green-1" />
+            <Frame region="tank-green-2" />
+        </Animation>
+        <Animation name="explosion-anim" delay="100">
+            <Frame region="explosion-frame-1" />
+            <Frame region="explosion-frame-2" />
+            <Frame region="explosion-frame-3" />
+            <Frame region="explosion-frame-4" />
+            <Frame region="explosion-frame-5" />
+            <Frame region="explosion-frame-6" />
+            <Frame region="explosion-frame-7" />
+        </Animation>
+
+        <Animation name="plasma-anim" delay="500">
+            <Frame region="plasma-1" />
+            <Frame region="plasma-2" />
+            <Frame region="plasma-3" />
+        </Animation>
+
+        <Animation name="bullet-anim" delay="100">
+            <Frame region="bullet-1" />
+            <Frame region="bullet-2" />
+            <Frame region="bullet-3" />
+        </Animation>
+
+        <Animation name="recoil-anim" delay="85">
+            <Frame region="recoil-1" />
+            <Frame region="recoil-2" />
+        </Animation>
+    </Animations>
+
+</TextureAtlas>

@@ -9,6 +9,8 @@ namespace SpaceTanks
 {
     public class Tank
     {
+
+        private bool _isRecoiling;
         private int _currentFrame;
         private TimeSpan _elapsed;
         private readonly ContentManager _content;
@@ -16,6 +18,7 @@ namespace SpaceTanks
         private TextureRegion _turret;
         private TextureRegion _gun;
         private Animation _body_animation;
+        private Animation _recoil_animation;
 
         private Vector2 _position;
         private float _velocityX;
@@ -31,8 +34,8 @@ namespace SpaceTanks
         private bool _isOnGround;
 
         public Color Color { get; set; } = Color.White;
-        public float GunRotation { get; set; } = 0.0f;
-        public Vector2 Scale { get; set; } = new Vector2(1.5f, 1.5f);
+        public float GunRotation { get; set; } = -MathHelper.PiOver2;
+        public Vector2 Scale { get; set; } =  Vector2.One;
         public Vector2 Origin { get; set; } = Vector2.Zero;
         public SpriteEffects Effects { get; set; } = SpriteEffects.None;
         public float LayerDepth { get; set; } = 0.0f;
@@ -42,6 +45,27 @@ namespace SpaceTanks
         public Vector2 Position => _position;
         public bool IsOnGround => _isOnGround;
 
+        private Vector2 _gunPosition => new Vector2(
+            _position.X,
+            _position.Y - Height/2
+        );
+
+        private float gunLength=>_gun.Width;
+
+        private Vector2 gunTip => _gunPosition + 
+          new Vector2(0, _gun.Height * 0.5f) + 
+          new Vector2(
+            // (float)Math.Cos(GunRotation) * gunLength,
+            // (float)Math.Sin(GunRotation) * gunLength
+            0, 0
+        );
+
+        private float _shootCooldown = 0f;
+        private const float SHOOT_DELAY = 0.5f; // Half second between shots
+
+        public bool IsReloading => _shootCooldown > 0f;
+
+
         public Tank(ContentManager content)
         {
             _content = content;
@@ -50,10 +74,12 @@ namespace SpaceTanks
             _velocityY = 0f;
             _moveDirection = 0;
 
-            // Load animations from atlas
-            TextureAtlas atlas = TextureAtlas.FromFile(_content, "tank-atlas.xml");
+            TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
             _body_animation = atlas.GetAnimation("tank-green-moving");
             _body = atlas.GetRegion("tank-green-1");
+            _recoil_animation = atlas.GetAnimation("recoil-anim");
+            _recoil_animation.Loop = false;
+            _isRecoiling = false;
 
             _turret = atlas.GetRegion("turret");
             _gun = atlas.GetRegion("gun");
@@ -77,77 +103,108 @@ namespace SpaceTanks
             _moveDirection = -1;
         }
 
+        // In your Tank class
+public Bullet Shoot()
+{
+    if (IsReloading)
+        return null;
+    
+    _shootCooldown = SHOOT_DELAY;
+
+    // Start recoil animation
+    _isRecoiling = true;
+    _recoil_animation.Reset();
+
+    Vector2 gunTip = new Vector2(
+        _gunPosition.X + (float)Math.Cos(GunRotation) * gunLength,
+        _gunPosition.Y + (float)Math.Sin(GunRotation) * gunLength
+    );
+    
+    return new Bullet(_content, gunTip, GunRotation, speed: 250f);
+}
+
         // Move the tank right
         public void MoveRight()
         {
             _moveDirection = 1;
         }
 
-        // Jump
-        public void Jump()
-        {
-            if (_isOnGround)
-            {
-                _velocityY = -8f; // Jump strength
-            }
-        }
-
-        // Rotate the tank gun left
         public void RotateGunLeft(float deltaTime)
         {
             GunRotation -= MathHelper.PiOver2 * deltaTime;
-            GunRotation = MathHelper.Clamp(GunRotation, -MathHelper.PiOver2, MathHelper.PiOver2);
+            GunRotation = MathHelper.Clamp(GunRotation, -MathHelper.Pi * 7/8, -MathHelper.Pi*1/8);
         }
 
-        // Rotate the tank gun right
         public void RotateGunRight(float deltaTime)
         {
             GunRotation += MathHelper.PiOver2 * deltaTime;
-            GunRotation = MathHelper.Clamp(GunRotation, -MathHelper.PiOver2, MathHelper.PiOver2);
+            GunRotation = MathHelper.Clamp(GunRotation, -MathHelper.Pi * 7/8, -MathHelper.Pi*1/8);
         }
 
-        // Draw the tank and its gun
         public void Draw(SpriteBatch spriteBatch)
-        {
-            // Draw tank body first
-            _body.Draw(spriteBatch, _position, Color, 0f, Origin, Scale, Effects, LayerDepth);
 
-            // Calculate turret/gun position
-            Vector2 gunPosition = new Vector2(
-                _position.X + (_body.Width * Scale.X * 0.5f) - Origin.X,
-                _position.Y + (_body.Height * Scale.Y * 0.5f) - 5f * Scale.Y
+        {
+            _gun.Draw(
+                spriteBatch,
+                _gunPosition,
+                Color,
+                GunRotation,
+                new Vector2(0, _gun.Height * 0.5f),
+                Scale,
+                Effects,
+                LayerDepth + 0.02f
             );
+
 
             // Draw turret
             _turret.Draw(
                 spriteBatch,
-                gunPosition,
+                _gunPosition,
                 Color,
-                GunRotation,
+                0,
                 new Vector2(_turret.Width * 0.5f, _turret.Height * 0.5f),
                 Scale,
                 Effects,
                 LayerDepth + 0.01f
             );
+            _body.Draw(spriteBatch, _position, Color, 0f, Origin, Scale, Effects, LayerDepth);
 
-            // Draw gun
-            _gun.Draw(
-                spriteBatch,
-                gunPosition,
-                Color,
-                GunRotation - MathHelper.PiOver2,
-                new Vector2(_gun.Width * 0.5f, _gun.Height * 0.5f),
-                Scale,
-                Effects,
-                LayerDepth + 0.02f
-            );
+
+if (_isRecoiling)
+{
+    TextureRegion recoilFrame = _recoil_animation.CurrentFrame;
+
+    Vector2 gunTip = new Vector2(
+        _gunPosition.X + (float)Math.Cos(GunRotation) * (gunLength + 6.0f),
+        _gunPosition.Y + (float)Math.Sin(GunRotation) * (gunLength + 6.0f)
+    );
+
+    recoilFrame.Draw(
+        spriteBatch,
+        gunTip,
+        Color.White,
+        GunRotation,
+        new Vector2(recoilFrame.Width * 0.5f, recoilFrame.Height * 0.5f),
+        Scale,
+        Effects,
+        LayerDepth + 0.05f
+    );
+}
+
+
         }
+
 
         // Update the tank's animation and movement
         public void Update(GameTime gameTime, ProceduralWorld world)
         {
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+
+            if (_shootCooldown > 0f)
+            {
+                _shootCooldown -= deltaTime;
+            }
             // Apply horizontal acceleration or deceleration based on input
             if (_moveDirection != 0)
             {
@@ -169,7 +226,6 @@ namespace SpaceTanks
                 }
             }
 
-            // Clamp velocity to max speed
             _velocityX = MathHelper.Clamp(_velocityX, -MaxSpeed, MaxSpeed);
 
             // Apply gravity
@@ -203,11 +259,29 @@ namespace SpaceTanks
 
                 _body = _body_animation.Frames[_currentFrame];
             }
+
+            if (_isRecoiling)
+            {
+                _recoil_animation.Update(deltaTime);
+                if (_recoil_animation.HasFinished)
+                {
+                    _isRecoiling = false;
+                }
+            }
         }
 
+
+private Rectangle GetBounds()
+{
+    return new Rectangle(
+        (int)(_position.X - Origin.X),
+        (int)(_position.Y - Origin.Y),
+        (int)Width,
+        (int)Height
+    );
+}
         private void HandleCollision(ProceduralWorld world)
         {
-            // Get tank bounds
             Rectangle tankBounds = new Rectangle(
                 (int)(_position.X - Origin.X),
                 (int)(_position.Y - Origin.Y),
@@ -215,7 +289,6 @@ namespace SpaceTanks
                 (int)Height
             );
 
-            // Check tiles around tank
             Point topLeft = world.WorldToTile(new Vector2(tankBounds.Left, tankBounds.Top));
             Point bottomRight = world.WorldToTile(new Vector2(tankBounds.Right, tankBounds.Bottom));
 
