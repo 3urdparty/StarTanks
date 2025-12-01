@@ -1,9 +1,11 @@
-
-
 using System;
 using Microsoft.Xna.Framework;
 
 namespace MonoGameLibrary.Graphics;
 
-public class AnimatedSprite : Sprite 
+public class Structure : Sprite 
+{
+public Structure() {
+}
+
 }

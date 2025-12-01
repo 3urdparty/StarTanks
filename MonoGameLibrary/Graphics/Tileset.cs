@@ -35,19 +35,8 @@ public Tileset(TextureRegion textureRegion, int tileWidth, int tileHeight)
     }
 }
 
-/// <summary>
-/// Gets the texture region for the tile from this tileset at the given index.
-/// </summary>
-/// <param name="index">The index of the texture region in this tile set.</param>
-/// <returns>The texture region for the tile form this tileset at the given index.</returns>
 public TextureRegion GetTile(int index) => _tiles[index];
 
-/// <summary>
-/// Gets the texture region for the tile from this tileset at the given location.
-/// </summary>
-/// <param name="column">The column in this tileset of the texture region.</param>
-/// <param name="row">The row in this tileset of the texture region.</param>
-/// <returns>The texture region for the tile from this tileset at given location.</returns>
 public TextureRegion GetTile(int column, int row)
 {
     int index = row * Columns + column;

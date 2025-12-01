@@ -1,0 +1,8 @@
+- [ ] Fix collision issue preventing from moving
+- [x] Add gun
+- [ ] Shoot from gun
+- [ ] Add healthbar
+- [ ] Die if fall of screen
+- [ ] reload time for gun + ammunition
+- [ ] Add animation for bullet
+- [ ] bullet travelling
