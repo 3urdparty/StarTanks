@@ -53,6 +53,14 @@
         <Region  name="explosion-frame-7" x="192" y="0" width="32" height="32" />
     </Regions>
 
+    <Regions>
+        <Texture name="missiles">images/Missiles</Texture>
+        <Region  name="missile-1" x="0" y="0" width="64" height="64" />
+        <Region  name="missile-2" x="64" y="0" width="64" height="64" />
+        <Region   name="missile-3" x="128" y="0" width="64" height="64" />
+        <Region  name="missile-4" x="192" y="0" width="64" height="64" />
+    </Regions>
+
     <Animations>
         <Animation name="tank-green-moving" delay="200">
             <Frame region="tank-green-1" />

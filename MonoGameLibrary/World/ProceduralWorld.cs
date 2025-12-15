@@ -5,101 +5,8 @@
 // using Microsoft.Xna.Framework.Graphics;
 // using MonoGameLibrary.Graphics;
 //
-// namespace SpaceTanks
+// namespace MonoGameLibrary
 // {
-//     // Abstract collision shape
-//     public abstract class CollisionShape
-//     {
-//         public abstract List<Rectangle> GetBounds();
-//         public abstract void Draw(SpriteBatch spriteBatch, Texture2D pixel, Color color, int thickness);
-//     }
-//
-//     // Polygon-based collision shape (outline)
-//     public class PolygonCollisionShape : CollisionShape
-//     {
-//         private struct LineSegment
-//         {
-//             public Vector2 Start;
-//             public Vector2 End;
-//             public LineSegment(Vector2 start, Vector2 end)
-//             {
-//                 Start = start;
-//                 End = end;
-//             }
-//         }
-//
-//         private List<LineSegment> _edges = new List<LineSegment>();
-//
-//         public void AddEdge(Vector2 start, Vector2 end)
-//         {
-//             _edges.Add(new LineSegment(start, end));
-//         }
-//
-//         public void Clear()
-//         {
-//             _edges.Clear();
-//         }
-//
-//         public override List<Rectangle> GetBounds()
-//         {
-//             var bounds = new List<Rectangle>();
-//             foreach (var edge in _edges)
-//             {
-//                 float minX = Math.Min(edge.Start.X, edge.End.X);
-//                 float maxX = Math.Max(edge.Start.X, edge.End.X);
-//                 float minY = Math.Min(edge.Start.Y, edge.End.Y);
-//                 float maxY = Math.Max(edge.Start.Y, edge.End.Y);
-//
-//                 // Ensure non-zero dimensions for rectangles
-//                 if (maxX - minX < 1) maxX = minX + 1;
-//                 if (maxY - minY < 1) maxY = minY + 1;
-//
-//                 bounds.Add(new Rectangle(
-//                     (int)minX,
-//                     (int)minY,
-//                     (int)(maxX - minX),
-//                     (int)(maxY - minY)
-//                 ));
-//             }
-//             return bounds;
-//         }
-//
-//         public override void Draw(SpriteBatch spriteBatch, Texture2D pixel, Color color, int thickness)
-//         {
-//             foreach (var edge in _edges)
-//             {
-//                 if (Math.Abs(edge.Start.X - edge.End.X) < 0.1f)
-//                 {
-//                     // Vertical line
-//                     float x = edge.Start.X;
-//                     float y = Math.Min(edge.Start.Y, edge.End.Y);
-//                     float length = Math.Abs(edge.End.Y - edge.Start.Y);
-//                     Rectangle rect = new Rectangle(
-//                         (int)x,
-//                         (int)y,
-//                         thickness,
-//                         (int)length
-//                     );
-//                     spriteBatch.Draw(pixel, rect, color);
-//                 }
-//                 else if (Math.Abs(edge.Start.Y - edge.End.Y) < 0.1f)
-//                 {
-//                     // Horizontal line
-//                     float y = edge.Start.Y;
-//                     float x = Math.Min(edge.Start.X, edge.End.X);
-//                     float length = Math.Abs(edge.End.X - edge.Start.X);
-//                     Rectangle rect = new Rectangle(
-//                         (int)x,
-//                         (int)y,
-//                         (int)length,
-//                         thickness
-//                     );
-//                     spriteBatch.Draw(pixel, rect, color);
-//                 }
-//             }
-//         }
-//     }
-//
 //     public class ProceduralWorld
 //     {
 //         private readonly ContentManager _content;
@@ -435,7 +342,7 @@
 //             // Draw collision shape using the abstract interface
 //             Color edgeColor = Color.Red * 0.7f;
 //             int thickness = 2;
-//             _collisionShape.Draw(spriteBatch, _debugPixel, edgeColor, thickness);
+//             // _collisionShape.Draw(spriteBatch, _debugPixel, edgeColor, thickness);
 //         }
 //
 //         private TextureRegion GetTileRegion(int tileType)

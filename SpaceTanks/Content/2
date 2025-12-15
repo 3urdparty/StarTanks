@@ -1,0 +1,82 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+
+namespace MonoGameLibrary
+{
+  public abstract class GameObject : ICollidable, IPhysicsEnabled {
+        public CollisionEngine _collisionEngine {set; get;}
+        public Vector2 PreviousPosition {get;set;}
+        public Vector2 Position { get; set; }
+        public Vector2 Velocity { get; set; } = new Vector2(0, 0);
+        public Vector2 Acceleration {set;get;} = new Vector2(0,0);
+        public  float MaxSpeed {get; }= 2f;
+        public Vector2 Origin { get; set; } = Vector2.Zero;
+        public float Width {set; get;}
+        public float Height {set; get;}
+        public CollisionState CollisionState { get; } = new CollisionState();
+
+        private bool _isRecoiling;
+        private int _currentFrame;
+        private TimeSpan _elapsed;
+
+        private const float Deceleration = 0.15f;
+        private const float Gravity = 9.8f;
+        private const float MaxFallSpeed = 10f;
+        public abstract Rectangle GetBounds();
+  }
+    public class PhysicsEngine
+    {
+        private readonly List<IPhysicsEnabled> _objects = new List<GameObject>();
+        private const float Gravity = 0.98f;
+        private const float GravityMaxSpeed = 4f;
+
+        private readonly ProceduralWorld _world;
+
+        public PhysicsEngine(ProceduralWorld world){
+          _world = world;
+        }
+
+        public void Register(IPhysicsEnabled obj)
+        {
+            if (!_objects.Contains(obj))
+                _objects.Add(obj);
+        }
+
+        public void Unregister(IPhysicsEnabled obj)
+        {
+            _objects.Remove(obj);
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            foreach (var obj in _objects)
+            {
+                ResolvePhysics(obj);
+                CollidesWith(obj, _world);
+            }
+        }
+
+
+
+        public bool CollidesWith(ICollidable obj1, ICollidable obj2){
+          return obj1.GetBounds().Intersects(obj2.GetBounds())
+        }
+
+        public bool CollidesWith(ICollidable obj, ProceduralWorld world){
+            foreach (var bound in _world.GetCollisionBounds())
+            {
+              if (obj.GetBounds().Intersects(bound)) return true;
+            }
+            return false;
+        }
+
+        private void ResolvePhysics(IPhysicsEnabled obj){
+          obj.Acceleration = new Vector2(0, Gravity);
+          float velocityX = Math.Clamp(obj.Velocity.X + obj.Acceleration.X, -obj.MaxSpeed, obj.MaxSpeed);
+          float velocityY = Math.Clamp(obj.Velocity.Y + obj.Acceleration.Y, -GravityMaxSpeed, GravityMaxSpeed);
+          obj.Velocity = new Vector2(velocityX, velocityY);
+          obj.Position += obj.Velocity;
+        }
+    }
+}

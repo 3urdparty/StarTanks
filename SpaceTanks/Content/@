@@ -1,0 +1,39 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
+
+namespace MonoGameLibrary
+{
+    public class PhysicsEngine
+    {
+        private readonly List<IPhysicsEnabled> _objects = new List<IPhysicsEnabled>();
+        private const float Gravity = 9.8f;
+
+        public PhysicsEngine(){}
+
+        public void Register(IPhysicsEnabled obj)
+        {
+            if (!_objects.Contains(obj))
+                _objects.Add(obj);
+        }
+
+        public void Unregister(IPhysicsEnabled obj)
+        {
+            _objects.Remove(obj);
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            foreach (var obj in _objects)
+            {
+                ResolvePhysics(obj);
+            }
+        }
+
+        private void ResolvePhysics(IPhysicsEnabled obj){
+          obj.Acceleration = new Vector2(0, Gravity);
+          
+        }
+
+    }
+}
