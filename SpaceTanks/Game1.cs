@@ -1,11 +1,14 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
-using System.Collections.Generic;
+
 namespace SpaceTanks;
+
 using System;
+
 public class Game1 : Core
 {
     // private ProceduralWorld _world;
@@ -14,40 +17,48 @@ public class Game1 : Core
     private GraphicsDeviceManager _graphics;
     private CollisionEngine collisionEngine;
     private PhysicsEngine physicsEngine;
+
     // In your Game class
     List<Projectile> projectiles = new List<Projectile>();
-    public Game1() : base("Space Tanks", 1280, 720, false)
-    {
-    }
+
+    public Game1()
+        : base("Space Tanks", 1280, 720, false) { }
+
     void HandleCollision(ICollidable a, ICollidable b)
     {
-      IPhysicsEnabled obj = (IPhysicsEnabled) a;
-      // obj.Velocity = new Vector2(0,0);
-      // obj.Acceleration = new Vector2(0,0);
+        IPhysicsEnabled obj = (IPhysicsEnabled)a;
+        // obj.Velocity = new Vector2(0,0);
+        // obj.Acceleration = new Vector2(0,0);
     }
+
     protected override void Initialize()
     {
         base.Initialize();
+
+        collisionEngine = new CollisionEngine();
+        physicsEngine = new PhysicsEngine();
+
+        physicsEngine.Enabled = true;
+        collisionEngine.Enabled = true;
+
         _tank = new Tank(Content);
         _tank.Position = new Vector2(300, 0);
-        _platform = new Platform(Content, GraphicsDevice);
-        _platform.CreatePlatform(new Vector2(300, 300), 30, 6, 32); // 30 tiles wide, 6 tiles tall, 32 pixels per tile
-        collisionEngine = new CollisionEngine();
+
+        _platform = new Platform(Content, 30, 6, 32);
+        _platform.Position = new Vector2(300, 300);
+
         collisionEngine.RegisterCollidableObject(_tank);
         collisionEngine.RegisterCollidableObject(_platform);
+        collisionEngine.Listen("Missile", "Platform");
+        collisionEngine.Listen("Tank", "Platform");
 
-        //
-        collisionEngine.Listen( _tank, _platform,
-                                CollisionEngine.AABB, HandleCollision);
-        physicsEngine = new PhysicsEngine();
-        physicsEngine.RegisterGameObject(_tank);
-        physicsEngine.Enabled = true;
+        collisionEngine.OnCollision += physicsEngine.HandleCollision;
 
-        physicsEngine = new PhysicsEngine();
         physicsEngine.RegisterGameObject(_tank);
-        physicsEngine.RegisterObstacle(_platform);  // Register platform as obstacle
-        physicsEngine.Enabled = true;
+
+        physicsEngine.RegisterObstacle(_platform); // Register platform as obstacle
     }
+
     protected override void LoadContent()
     {
         // Create world: 100 tiles wide, 30 tiles tall, 32 pixels per tile
@@ -55,14 +66,17 @@ public class Game1 : Core
         // _world.Generate(10); // Use seed for consistent level
         // _world.DebugDrawCollisions = true; // toggle debug view on
     }
+
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || 
-            Keyboard.GetState().IsKeyDown(Keys.Escape))
+        if (
+            GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
+            || Keyboard.GetState().IsKeyDown(Keys.Escape)
+        )
             Exit();
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         KeyboardState keyboardState = Keyboard.GetState();
-        
+
         // Tank movement - only apply acceleration when key is held
         if (keyboardState.IsKeyDown(Keys.A))
         {
@@ -77,7 +91,7 @@ public class Game1 : Core
             // Stop accelerating when no movement key is pressed
             _tank.StopMoving();
         }
-        
+
         // Gun rotation
         if (keyboardState.IsKeyDown(Keys.Left))
         {
@@ -92,55 +106,54 @@ public class Game1 : Core
             // When tank shoots
             Projectile projectile = _tank.Shoot();
             // collisionEngine.RegisterCollidableObject(newBullet);
-            // collisionEngine.Listen(newBullet, _platform,
-            //                         CollisionEngine.AABB, HandleCollision);
-            physicsEngine.RegisterGameObject(projectile);
-            // physicsEngine.RegisterObstacle(newBullet);  // Register platform as obstacle
 
             if (projectile != null)
             {
                 projectiles.Add(projectile);
+                physicsEngine.RegisterGameObject(projectile);
+                physicsEngine.RegisterObstacle(projectile); // Register platform as obstacle
+                collisionEngine.RegisterCollidableObject(projectile);
             }
         }
-        
-        // for (int i = bullets.Count - 1; i >= 0; i--)
-        // {
-        //     bullets[i].Update(deltaTime, _world);
-        //
-        //
-        //     if (bullets[i].IsOutOfBounds(_world.WorldWidth * 16 , _world.WorldHeight * 16))
-        //     {
-        //
-        //         bullets[i].Deactivate();
-        //         bullets.RemoveAt(i);
-        //     }
-        // }
-        
+
         _tank.Update(gameTime);
         _platform.Update(gameTime);
+
+        foreach (var projectile in projectiles)
+        {
+            projectile.Update(gameTime);
+        }
+        projectiles.RemoveAll(m => (m as GameObject)?.Destroyed ?? false);
+
         collisionEngine.Update();
         physicsEngine.Update(gameTime);
         base.Update(gameTime);
-
-
     }
+
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
         SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
         // Draw world with camera bounds (entire screen for now)
-        Rectangle cameraBounds = new Rectangle(0, 0, 
-            GraphicsDevice.Viewport.Width, 
-            GraphicsDevice.Viewport.Height);
+        Rectangle cameraBounds = new Rectangle(
+            0,
+            0,
+            GraphicsDevice.Viewport.Width,
+            GraphicsDevice.Viewport.Height
+        );
         // _world.Draw(SpriteBatch, cameraBounds);
         // Draw tank
         _tank.Draw(SpriteBatch);
- 
+        SpriteBatch.Draw(_tank.GetBounds(), Color.Green);
+
         _platform.Draw(SpriteBatch);
+        SpriteBatch.Draw(_platform.GetBounds(), Color.Green);
         // Draw all bullets
         foreach (var projectile in projectiles)
         {
             projectile.Draw(SpriteBatch);
+
+            SpriteBatch.Draw(projectile.GetBounds(), Color.Green);
         }
         SpriteBatch.End();
         base.Draw(gameTime);

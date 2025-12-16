@@ -44,13 +44,25 @@ namespace SpaceTanks
 
         private Texture2D _debugPixel;
 
-        public Platform(ContentManager content, GraphicsDevice graphicsDevice)
+        Polygon Collision { get; }
+
+        public Platform(ContentManager content, int width, int height, int tileSize = 32)
         {
             _content = content;
             LoadTiles();
 
-            _debugPixel = new Texture2D(graphicsDevice, 1, 1);
-            _debugPixel.SetData(new[] { Color.White });
+            // Width = width;
+            // Height = height;
+            CreatePlatform(width, height, tileSize);
+
+            //TODO: Fix this
+            Collision = new Polygon([
+                Vector2.Zero,
+                new Vector2(Width / 3, 0),
+                new Vector2(2 * Width / 3, Height / 2),
+                new Vector2(Width * 3 / 3, Height),
+                new Vector2(0, Height),
+            ]);
         }
 
         private void LoadTiles()
@@ -71,14 +83,8 @@ namespace SpaceTanks
         /// <summary>
         /// Create a rectangular platform at the given position with the specified dimensions.
         /// </summary>
-        public void CreatePlatform(
-            Vector2 position,
-            int platformWidth,
-            int platformHeight,
-            int tileSize = 32
-        )
+        public void CreatePlatform(int platformWidth, int platformHeight, int tileSize = 32)
         {
-            Position = position;
             _tileSize = tileSize;
             _platformWidth = platformWidth;
             _platformHeight = platformHeight;
@@ -119,7 +125,6 @@ namespace SpaceTanks
             // Set width and height based on tile dimensions
             Width = platformWidth * tileSize;
             Height = platformHeight * tileSize;
-            Origin = Vector2.Zero;
         }
 
         public override void Update(GameTime gameTime)
@@ -158,47 +163,16 @@ namespace SpaceTanks
                     );
                 }
             }
-
-            // Draw collision bounds (debug)
-            DrawBounds(spriteBatch);
         }
 
-        private void DrawBounds(SpriteBatch spriteBatch)
+        public Polygon GetBounds()
         {
-            Rectangle bounds = GetBound();
-
-            int thickness = 2;
-
-            spriteBatch.Draw(
-                _debugPixel,
-                new Rectangle(bounds.Left, bounds.Top, bounds.Width, thickness),
-                Color.Yellow
-            );
-            spriteBatch.Draw(
-                _debugPixel,
-                new Rectangle(bounds.Left, bounds.Bottom - thickness, bounds.Width, thickness),
-                Color.Yellow
-            );
-            spriteBatch.Draw(
-                _debugPixel,
-                new Rectangle(bounds.Left, bounds.Top, thickness, bounds.Height),
-                Color.Yellow
-            );
-            spriteBatch.Draw(
-                _debugPixel,
-                new Rectangle(bounds.Right - thickness, bounds.Top, thickness, bounds.Height),
-                Color.Yellow
-            );
-        }
-
-        public Rectangle GetBound()
-        {
-            return new Rectangle((int)Position.X, (int)Position.Y, (int)Width, (int)Height);
+            return Collision + Position - Origin;
         }
 
         public string GetGroupName()
         {
-            return "platform";
+            return "Platform";
         }
 
         private TextureRegion GetTileRegion(int tileType)

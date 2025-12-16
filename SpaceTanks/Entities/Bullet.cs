@@ -1,124 +1,121 @@
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using System;
-using Microsoft.Xna.Framework.Content;
-using MonoGameLibrary.Graphics;
-using MonoGameLibrary;
-
-namespace SpaceTanks
-{
-    public class Bullet : GameObject, ICollidable, IPhysicsEnabled
-    {
-        private readonly ContentManager _content;
-        private TextureRegion _sprite;
-        private Animation _animation;
-        private float _rotation;
-        private bool _isActive;
-
-        public Vector2 Velocity { get; set; }
-        public Vector2 Acceleration { get; set; }
-        public float Drag { get; set; } = 0f; // Bullets don't have drag
-        
-        public Color Color { get; set; } = Color.White;
-        public SpriteEffects Effects { get; set; } = SpriteEffects.None;
-        public float LayerDepth { get; set; } = 0.1f;
-
-        public float Mass{set; get;} = 0.0f;
-        public bool IsActive => _isActive;
-        public bool NeedsTraction{set; get; } = false;
-
-        public Bullet(ContentManager content, Vector2 position, float rotation, float speed = 300f)
-        {
-            _content = content;
-            Name = "bullet";
-
-            TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
-            _sprite = atlas.GetRegion("bullet-3");
-            Origin = new Vector2(_sprite.Width, _sprite.Height) * 0.5f;
-
-            _animation = atlas.GetAnimation("bullet-anim");
-            _animation.Loop = false;
-
-            Position = position;
-            _rotation = rotation;
-            Width = _sprite.Width;
-            Height = _sprite.Height;
-            _isActive = true;
-
-            // Calculate velocity from rotation
-            Velocity = new Vector2(
-                (float)Math.Cos(rotation),
-                (float)Math.Sin(rotation)
-            ) * speed;
-
-            Acceleration = Vector2.Zero;
-        }
-
-        public override void Update(GameTime gameTime)
-        {
-            if (!_isActive)
-                return;
-
-            float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            // Update animation
-            _animation.Update(deltaTime);
-        }
-
-        public override void Draw(SpriteBatch spriteBatch)
-        {
-            if (!_isActive)
-                return;
-
-            TextureRegion currentFrame = _animation.CurrentFrame ?? _sprite;
-
-            currentFrame.Draw(
-                spriteBatch,
-                Position,
-                Color,
-                _rotation,
-                new Vector2(currentFrame.Width * 0.5f, currentFrame.Height * 0.5f),
-                Vector2.One,
-                Effects,
-                LayerDepth
-            );
-        }
-
-        public Rectangle GetBound()
-        {
-            return new Rectangle(
-                (int)(Position.X - Origin.X),
-                (int)(Position.Y - Origin.Y),
-                (int)Width,
-                (int)Height
-            );
-        }
-
-        public string GetGroupName()
-        {
-            return "bullet";
-        }
-
-        public void Deactivate()
-        {
-            _isActive = false;
-        }
-
-        public bool IsOutOfBounds(int screenWidth, int screenHeight, int margin = 100)
-        {
-            return Position.X < -margin ||
-                   Position.X > screenWidth + margin ||
-                   Position.Y < -margin ||
-                   Position.Y > screenHeight + margin;
-        }
-
-        public void OnCollision(CollisionInfo info)
-        {
-            // Bullet is destroyed on any collision
-            if (info.Other != null)
-            {
-                Deactivate();
-            }
-        }
-    }
-}
+// using System;
+// using Microsoft.Xna.Framework;
+// using Microsoft.Xna.Framework.Content;
+// using Microsoft.Xna.Framework.Graphics;
+// using MonoGameLibrary;
+// using MonoGameLibrary.Graphics;
+//
+// namespace SpaceTanks
+// {
+//     public class Bullet : GameObject, ICollidable, IPhysicsEnabled
+//     {
+//         private readonly ContentManager _content;
+//         private TextureRegion _sprite;
+//         private Animation _animation;
+//         private float _rotation;
+//         private bool _isActive;
+//
+//         public Vector2 Velocity { get; set; }
+//         public Vector2 Acceleration { get; set; }
+//         public float Drag { get; set; } = 0f; // Bullets don't have drag
+//
+//         public Color Color { get; set; } = Color.White;
+//         public SpriteEffects Effects { get; set; } = SpriteEffects.None;
+//         public float LayerDepth { get; set; } = 0.1f;
+//
+//         public float Mass { set; get; } = 0.0f;
+//         public bool IsActive => _isActive;
+//         public bool NeedsTraction { set; get; } = false;
+//
+//         public Bullet(ContentManager content, Vector2 position, float rotation, float speed = 300f)
+//         {
+//             _content = content;
+//             Name = "bullet";
+//
+//             TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
+//             _sprite = atlas.GetRegion("bullet-3");
+//             Origin = new Vector2(_sprite.Width, _sprite.Height) * 0.5f;
+//
+//             _animation = atlas.GetAnimation("bullet-anim");
+//             _animation.Loop = false;
+//
+//             Position = position;
+//             _rotation = rotation;
+//             Width = _sprite.Width;
+//             Height = _sprite.Height;
+//             _isActive = true;
+//
+//             // Calculate velocity from rotation
+//             Velocity = new Vector2((float)Math.Cos(rotation), (float)Math.Sin(rotation)) * speed;
+//
+//             Acceleration = Vector2.Zero;
+//         }
+//
+//         public override void Update(GameTime gameTime)
+//         {
+//             if (!_isActive)
+//                 return;
+//
+//             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+//
+//             // Update animation
+//             _animation.Update(deltaTime);
+//         }
+//
+//         public override void Draw(SpriteBatch spriteBatch)
+//         {
+//             if (!_isActive)
+//                 return;
+//
+//             TextureRegion currentFrame = _animation.CurrentFrame ?? _sprite;
+//
+//             currentFrame.Draw(
+//                 spriteBatch,
+//                 Position,
+//                 Color,
+//                 _rotation,
+//                 new Vector2(currentFrame.Width * 0.5f, currentFrame.Height * 0.5f),
+//                 Vector2.One,
+//                 Effects,
+//                 LayerDepth
+//             );
+//         }
+//
+//         public Polygon GetBounds()
+//         {
+//             return new Rectangle(
+//                 (int)(Position.X - Origin.X),
+//                 (int)(Position.Y - Origin.Y),
+//                 (int)Width,
+//                 (int)Height
+//             );
+//         }
+//
+//         public string GetGroupName()
+//         {
+//             return "bullet";
+//         }
+//
+//         public void Deactivate()
+//         {
+//             _isActive = false;
+//         }
+//
+//         public bool IsOutOfBounds(int screenWidth, int screenHeight, int margin = 100)
+//         {
+//             return Position.X < -margin
+//                 || Position.X > screenWidth + margin
+//                 || Position.Y < -margin
+//                 || Position.Y > screenHeight + margin;
+//         }
+//
+//         public void OnCollision(CollisionInfo info)
+//         {
+//             // Bullet is destroyed on any collision
+//             if (info.Other != null)
+//             {
+//                 Deactivate();
+//             }
+//         }
+//     }
+// }

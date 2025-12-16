@@ -28,6 +28,8 @@ namespace SpaceTanks
         private Animation _recoil_animation;
         public bool isGrounded { set; get; }
 
+        public bool Stationary { set; get; } = false;
+
         // Physics
         public Vector2 Velocity { get; set; }
         public Vector2 Acceleration { get; set; }
@@ -52,6 +54,8 @@ namespace SpaceTanks
         private Vector2 _gunPosition => new Vector2(Position.X, Position.Y - Height / 2);
         private float _gunLength => _gun.Width;
 
+        Polygon Collision { get; }
+
         public Tank(ContentManager content, AmmunitionType type = AmmunitionType.Missile)
         {
             _ammunitionType = type;
@@ -73,6 +77,13 @@ namespace SpaceTanks
 
             Acceleration = Vector2.Zero;
             Velocity = Vector2.Zero;
+
+            Collision = new Polygon([
+                Vector2.Zero,
+                new Vector2(Width, 0),
+                new Vector2(Width, Height),
+                new Vector2(0, Height),
+            ]);
         }
 
         public void MoveLeft()
@@ -214,49 +225,16 @@ namespace SpaceTanks
             DrawBounds(spriteBatch);
         }
 
-        private void DrawBounds(SpriteBatch spriteBatch)
+        private void DrawBounds(SpriteBatch spriteBatch) { }
+
+        public Polygon GetBounds()
         {
-            Rectangle bounds = GetBound();
-            Texture2D pixel = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-            pixel.SetData(new[] { Color.White });
-
-            int thickness = 2;
-
-            spriteBatch.Draw(
-                pixel,
-                new Rectangle(bounds.Left, bounds.Top, bounds.Width, thickness),
-                Color.Green
-            );
-            spriteBatch.Draw(
-                pixel,
-                new Rectangle(bounds.Left, bounds.Bottom - thickness, bounds.Width, thickness),
-                Color.Green
-            );
-            spriteBatch.Draw(
-                pixel,
-                new Rectangle(bounds.Left, bounds.Top, thickness, bounds.Height),
-                Color.Green
-            );
-            spriteBatch.Draw(
-                pixel,
-                new Rectangle(bounds.Right - thickness, bounds.Top, thickness, bounds.Height),
-                Color.Green
-            );
-        }
-
-        public Rectangle GetBound()
-        {
-            return new Rectangle(
-                (int)(Position.X - Origin.X),
-                (int)(Position.Y - Origin.Y),
-                (int)Width,
-                (int)Height
-            );
+            return Position + Collision - Origin;
         }
 
         public string GetGroupName()
         {
-            return "tank";
+            return "Tank";
         }
     }
 }
