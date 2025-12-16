@@ -15,6 +15,8 @@ namespace MonoGameLibrary
         public float Mass { set; get; } = 0.0f;
         public bool NeedsTraction { set; get; } = false;
 
+        public bool Stationary { set; get; } = false;
+
         public Projectile(
             ContentManager content,
             Vector2 position,
@@ -35,7 +37,7 @@ namespace MonoGameLibrary
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         }
 
-        public abstract CollisionShape GetBounds();
+        public abstract Polygon GetBounds();
 
         public abstract override void Draw(SpriteBatch spriteBatch);
         public abstract string GetGroupName();

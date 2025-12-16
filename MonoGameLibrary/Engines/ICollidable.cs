@@ -12,6 +12,6 @@ namespace MonoGameLibrary
 
         public string GetGroupName();
 
-        public CollisionShape GetBounds();
+        public Polygon GetBounds();
     }
 }

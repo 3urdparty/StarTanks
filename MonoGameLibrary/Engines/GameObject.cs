@@ -15,6 +15,8 @@ namespace MonoGameLibrary
         public float Height;
         public float Width;
 
+        public bool Destroyed { get; protected set; } = false;
+
         public abstract void Draw(SpriteBatch spriteBatch);
         public abstract void Update(GameTime gameTime);
     }

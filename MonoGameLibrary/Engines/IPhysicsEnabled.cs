@@ -10,8 +10,9 @@ namespace MonoGameLibrary
         Vector2 Velocity { get; set; }
         Vector2 Acceleration { get; set; }
         float Drag { get; set; }
-        float Mass {get; set; }
-        public bool NeedsTraction {get; set;}
+        float Mass { get; set; }
+        public bool NeedsTraction { get; set; }
+        public bool Stationary { get; set; }
 
         // public Vector2 MaxSpeed;
     }

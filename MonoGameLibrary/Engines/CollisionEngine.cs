@@ -6,14 +6,11 @@ namespace MonoGameLibrary
 {
     public class CollisionEngine
     {
-        public delegate bool CollisionDetector(
+        public delegate void CollisionEventHandler(
             ICollidable thisCollidable,
             ICollidable thatCollidable
         );
-        public delegate void CollisionHandler(
-            ICollidable thisCollidable,
-            ICollidable thatCollidable
-        );
+        public event CollisionEventHandler OnCollision;
 
         private struct CollisionKey : IEquatable<CollisionKey>
         {
@@ -53,13 +50,11 @@ namespace MonoGameLibrary
         // Fields and Properties
         public bool Enabled { get; set; }
 
-        // Stores which group to detect collisions
+        // Stores which groups to detect collisions between
         private HashSet<CollisionKey> _collisionGroups;
 
         // Stores the collidables
         private Dictionary<string, HashSet<ICollidable>> _collidables;
-        private Dictionary<CollisionKey, CollisionDetector> _collisionDetectors;
-        private Dictionary<CollisionKey, CollisionHandler> _collisionHandlers;
 
         // Constructors and Methods
         public CollisionEngine()
@@ -67,77 +62,42 @@ namespace MonoGameLibrary
             Enabled = true;
 
             _collisionGroups = new HashSet<CollisionKey>();
-            _collisionDetectors = new Dictionary<CollisionKey, CollisionDetector>();
-            _collisionHandlers = new Dictionary<CollisionKey, CollisionHandler>();
             _collidables = new Dictionary<string, HashSet<ICollidable>>();
-
-            // [COMMENTED TEMPORARILY FOR PONG GAME]
-            // Add listener to handle object addition and removal
-            // GameObjectCollection.ObjectAdded += RegisterCollidableObject;
-            // GameObjectCollection.ObjectRemoved += DeregisterCollidableObject;
         }
 
-        // NOTE: Listen should be called after all game objects has been initialized
-        public void Listen(
-            string thisName,
-            string thatName,
-            CollisionDetector detector,
-            CollisionHandler handler = null
-        )
+        /// <summary>
+        /// Register two groups for collision detection.
+        /// </summary>
+        public void Listen(string thisGroupName, string thatGroupName)
         {
-            var key = new CollisionKey(thisName, thatName);
-            if (_collisionGroups.Add(key))
-            {
-                // Add collision detector (this is the first one)
-                _collisionDetectors.Add(key, detector);
-
-                if (handler != null)
-                {
-                    _collisionHandlers.Add(key, handler);
-                }
-            }
-            else
-            {
-                // Prevent duplicated collision detector and handler added
-                _collisionDetectors[key] -= detector;
-                _collisionDetectors[key] += detector;
-
-                if (handler != null)
-                {
-                    _collisionHandlers[key] -= handler;
-                    _collisionHandlers[key] += handler;
-                }
-            }
+            var key = new CollisionKey(thisGroupName, thatGroupName);
+            _collisionGroups.Add(key);
         }
 
-        // NOTE: Listen should be called after all game objects has been initialized
-        public void Listen(
-            ICollidable thisCollidable,
-            ICollidable thatCollidable,
-            CollisionDetector detector,
-            CollisionHandler handler = null
-        )
+        /// <summary>
+        /// Register two collidable objects' groups for collision detection.
+        /// </summary>
+        public void Listen(ICollidable thisCollidable, ICollidable thatCollidable)
         {
-            Listen(thisCollidable.GetGroupName(), thatCollidable.GetGroupName(), detector, handler);
+            Listen(thisCollidable.GetGroupName(), thatCollidable.GetGroupName());
         }
 
-        public void Listen(
-            Type thisType,
-            Type thatType,
-            CollisionDetector detector,
-            CollisionHandler handler = null
-        )
+        /// <summary>
+        /// Register two types' groups for collision detection.
+        /// </summary>
+        public void Listen(Type thisType, Type thatType)
         {
-            Listen(thisType.Name, thatType.Name, detector, handler);
+            Listen(thisType.Name, thatType.Name);
         }
 
         public void Update()
         {
             if (Enabled)
             {
+                foreach (var collidable in _collidables) { }
                 foreach (var collisionKey in _collisionGroups)
                 {
-                    // Detect collision iff both names has at least 1 object.
+                    // Detect collision iff both groups have at least 1 object
                     if (
                         _collidables.ContainsKey(collisionKey.FirstGroupName)
                         && _collidables.ContainsKey(collisionKey.SecondGroupName)
@@ -149,7 +109,7 @@ namespace MonoGameLibrary
                                 var thatCollidable in _collidables[collisionKey.SecondGroupName]
                             )
                             {
-                                DetectCollision(collisionKey, thisCollidable, thatCollidable);
+                                DetectCollision(thisCollidable, thatCollidable);
                             }
                         }
                     }
@@ -185,7 +145,7 @@ namespace MonoGameLibrary
 
                 if (_collidables.ContainsKey(groupName))
                 {
-                    _collidables[groupName].Remove((ICollidable)obj);
+                    _collidables[groupName].Remove(collidable);
                     Debug.WriteLine(
                         $"[CollisionEngine]: Removed COLLIDABLE object {obj.Name} from group {groupName}"
                     );
@@ -193,69 +153,27 @@ namespace MonoGameLibrary
             }
         }
 
-        private void DetectCollision(
-            CollisionKey collisionKey,
-            ICollidable thisObject,
-            ICollidable thatObject
-        )
+        /// <summary>
+        /// Detects collision between two objects using SAT and fires the OnCollision event if they collide.
+        /// </summary>
+        private void DetectCollision(ICollidable thisObject, ICollidable thatObject)
         {
-            var collisionDetector = _collisionDetectors[collisionKey];
-
-            if (collisionDetector(thisObject, thatObject))
+            // Use SAT to detect collision
+            if (thisObject.GetBounds().AABB().Intersects(thatObject.GetBounds().AABB()))
             {
-                CollisionInfo thisCollisionData = new CollisionInfo();
-                CollisionInfo thatCollisionData = new CollisionInfo();
-
-                thisCollisionData.Other = thatObject;
-                thatCollisionData.Other = thisObject;
-
-                // Execute external collision handlers if exists
-                if (_collisionHandlers.ContainsKey(collisionKey))
+                if (thisObject.GetBounds().Intersects(thatObject.GetBounds()))
                 {
-                    _collisionHandlers[collisionKey](thisObject, thatObject);
-                }
+                    // Fire OnCollision event
+                    OnCollision?.Invoke(thisObject, thatObject);
 
-                // Execute colliders' internal handler
-                thisObject.OnCollision(thisCollisionData);
-                thatObject.OnCollision(thatCollisionData);
+                    // Execute colliders' internal handler
+                    CollisionInfo thisCollisionData = new CollisionInfo { Other = thatObject };
+                    CollisionInfo thatCollisionData = new CollisionInfo { Other = thisObject };
+
+                    thisObject.OnCollision(thisCollisionData);
+                    thatObject.OnCollision(thatCollisionData);
+                }
             }
         }
-
-        #region Collision Detectors
-
-        public static bool AABB(ICollidable thisCollidable, ICollidable thatCollidable)
-        {
-            // return thisCollidable.GetBounds().Intersects(thatCollidable.GetBounds());
-            return thisCollidable.GetBounds().Left <= thatCollidable.GetBounds().Right
-                && thatCollidable.GetBounds().Left <= thisCollidable.GetBounds().Right
-                && thisCollidable.GetBounds().Top <= thatCollidable.GetBounds().Bottom
-                && thatCollidable.GetBounds().Top <= thisCollidable.GetBounds().Bottom;
-        }
-
-        public static bool NotAABB(ICollidable thisCollidable, ICollidable thatCollidable)
-        {
-            // TODO: Technically, this is one not inside another (can still intersect)
-            //bool thisHasThat = thisCollidable.GetBounds().Contains(thatCollidable.GetBounds());
-            //bool thatHasThis = thatCollidable.GetBounds().Contains(thisCollidable.GetBounds());
-            //return !(thisHasThat || thatHasThis);
-            return !AABB(thisCollidable, thatCollidable);
-        }
-
-        public static bool OneInsideAnother(ICollidable thisCollidable, ICollidable thatCollidable)
-        {
-            bool thisContainsThat = thisCollidable.GetBounds().Contains(thatCollidable.GetBounds());
-            bool thatContainsThis = thatCollidable.GetBounds().Contains(thisCollidable.GetBounds());
-            return (thisContainsThat || thatContainsThis);
-        }
-
-        public static bool NotOneInsideAnother(
-            ICollidable thisCollidable,
-            ICollidable thatCollidable
-        )
-        {
-            return !OneInsideAnother(thisCollidable, thatCollidable);
-        }
-
-        #endregion
     }
 }

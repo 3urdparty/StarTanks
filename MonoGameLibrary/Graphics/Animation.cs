@@ -58,12 +58,11 @@ namespace MonoGameLibrary.Graphics
                     else
                     {
                         _currentFrame = Frames.Count - 1; // hold last frame
-                        HasFinished = true;               // mark finished
+                        HasFinished = true; // mark finished
                     }
                 }
             }
         }
-
 
         public void Reset()
         {
@@ -71,6 +70,7 @@ namespace MonoGameLibrary.Graphics
             _elapsed = TimeSpan.Zero;
             HasFinished = false;
         }
+
         /// <summary>
         /// Returns the currently active frame.
         /// </summary>
