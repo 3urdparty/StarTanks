@@ -1,7 +1,11 @@
-- [x] Fix missile physics
-- [ ] Fix polygon physics
-- [ ] Add homing missiles
-- [ ] Add explosion animation on collision of projectiles
+- [ ] Explosions Change platform
+- Add Missiles
+- [ ] Homing missiles
+- [ ] Grenades
+- [ ] Laser
+- [ ] Cluster Bomb
+
+- [x] Add explosion animation on collision of projectiles
 - [ ] Projectiles destroy platform and change collision bounds
 - [ ] Platform has polygon bounds
 
