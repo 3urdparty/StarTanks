@@ -5,45 +5,29 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
+using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
 
 namespace SpaceTanks
 {
     public class Missile : Projectile
     {
-        private readonly ContentManager _content;
         private TextureRegion _sprite;
-        public Color Color { get; set; } = Color.White;
-        public SpriteEffects Effects { get; set; } = SpriteEffects.None;
-        public float LayerDepth { get; set; } = 0.1f;
-        Polygon Collision { get; }
-
         private Animation _explosionAnimation;
         private bool _isExploding = false;
 
-        public Missile(ContentManager content, Vector2 position, float rotation, float speed = 300f)
-            : base(content, position, rotation, speed)
+        public Missile()
+            : base()
         {
-            Stationary = false;
-            // Mass = 0.005f;
-            Mass = 0.05f;
-            _content = content;
             Name = "missile";
-            TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
+        }
+
+        public void Initialize(ContentManager content)
+        {
+            TextureAtlas atlas = TextureAtlas.FromFile(content, "atlas.xml");
             _sprite = atlas.GetRegion("missile-1");
             Origin = new Vector2(_sprite.Width, _sprite.Height) * 0.5f;
-            Position = position;
-            Rotation = rotation;
             Width = _sprite.Width;
             Height = _sprite.Height;
-            // Calculate velocity from rotation
-            Velocity = new Vector2((float)Math.Cos(rotation), (float)Math.Sin(rotation)) * speed;
-            Acceleration = Vector2.Zero;
-            Collision = new Polygon([
-                Vector2.Zero,
-                new Vector2(Width, 0),
-                new Vector2(Width, Height),
-                new Vector2(0, Height),
-            ]);
 
             // Load explosion animation from atlas
             _explosionAnimation = atlas.GetAnimation("explosion-anim");
@@ -52,6 +36,7 @@ namespace SpaceTanks
 
         public override void Update(GameTime gameTime)
         {
+            base.Update(gameTime);
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             if (_isExploding)
@@ -102,25 +87,12 @@ namespace SpaceTanks
             }
         }
 
-        public override Polygon GetBounds()
-        {
-            return Collision + Position - Origin;
-        }
-
-        public override string GetGroupName()
-        {
-            return "Missile";
-        }
-
-        public virtual void OnCollision(CollisionInfo collisionInfo)
+        public void Explode()
         {
             if (!_isExploding)
             {
-                Stationary = true;
                 _isExploding = true;
                 _explosionAnimation.Reset();
-                Velocity = Vector2.Zero;
-                Acceleration = Vector2.Zero;
             }
         }
     }

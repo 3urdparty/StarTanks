@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
+using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Joints;
+using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
 
 public enum AmmunitionType
 {
@@ -14,47 +19,271 @@ public enum AmmunitionType
 
 namespace SpaceTanks
 {
-    public class Tank : GameObject, ICollidable, IPhysicsEnabled, IGrounded
+    public class TankPhysics : PhysicsEntity
+    {
+        public Body ChassisBody { get; private set; }
+        public Body TurretBody { get; private set; }
+
+        private RevoluteJoint _turretJoint;
+        private float _motorSpeed = 0f;
+        private const float MotorTorque = 50f;
+        private const float TurretMass = 1f;
+        private const float ChassisMass = 10f;
+
+        /// <summary>
+        /// Initialize all physics bodies for the tank.
+        /// </summary>
+        ///
+        public override List<Body> GetBodies()
+        {
+            return [ChassisBody, TurretBody];
+        }
+
+        public override void Sync(GameObject gameObject)
+        {
+            Tank tank = (Tank)gameObject;
+            if (ChassisBody != null)
+            {
+                // // Update position from physics (convert from physics units to pixels)
+                tank.Position = new Vector2(
+                    ChassisBody.Position.X * 100f,
+                    ChassisBody.Position.Y * 100f
+                );
+
+                // Update rotation from physics
+                tank.Rotation = ChassisBody.Rotation;
+
+                tank.Gun.Position = new Vector2(
+                    TurretBody.Position.X * 100f,
+                    TurretBody.Position.Y * 100f
+                );
+
+                // Update rotation from physics
+                tank.Gun.Rotation = TurretBody.Rotation;
+            }
+        }
+
+        public void Initialize(World world, Tank tank)
+        {
+            // Create chassis body
+            AetherVector2 chassisPhysicsPos = new AetherVector2(
+                tank.Position.X / 100f,
+                tank.Position.Y / 100f
+            );
+
+            ChassisBody = world.CreateBody(chassisPhysicsPos, 0, BodyType.Dynamic);
+            ChassisBody.Tag = "TankChassis";
+            var chassisFixture = ChassisBody.CreateRectangle(
+                tank.Width / 100f,
+                tank.Height / 100f,
+                10f,
+                AetherVector2.Zero
+            );
+            chassisFixture.Friction = 0.5f;
+            chassisFixture.Restitution = 0.1f;
+
+            // Create turret body
+            AetherVector2 turretPhysicsPos = new AetherVector2(
+                tank.Position.X / 100f,
+                (tank.Position.Y - 0) / 100f
+            );
+
+            TurretBody = world.CreateBody(turretPhysicsPos, 0, BodyType.Dynamic);
+            TurretBody.Tag = "TurretBody";
+
+            // Increase angular damping to resist rotation
+            TurretBody.AngularDamping = 5f; // High damping makes it stiffer
+            TurretBody.LinearDamping = 2f; // Also resist linear movement
+
+            TurretBody.Rotation = -MathHelper.PiOver2; // -90 degrees
+            var turretFixture = TurretBody.CreateRectangle(
+                tank.Gun.Width / 100f,
+                tank.Gun.Height / 100f,
+                TurretMass * 5f, // Increase mass for more inertia
+                new AetherVector2(7f / 100, 0 / 100f)
+            );
+            turretFixture.Friction = 0.2f;
+            turretFixture.Restitution = 0.1f;
+
+            // Connect turret to chassis with revolute joint
+            AetherVector2 jointAnchor = new AetherVector2(0 / 100f, 0 / 100f);
+            _turretJoint = new RevoluteJoint(ChassisBody, TurretBody, jointAnchor)
+            {
+                MotorEnabled = true,
+                MotorSpeed = 0f,
+                MaxMotorTorque = 500f, // Much higher torque for stiffer joint
+                LimitEnabled = true,
+                LowerLimit = -MathHelper.Pi * 2 / 8,
+                UpperLimit = MathHelper.Pi * 2 / 8,
+            };
+
+            world.Add(_turretJoint);
+        }
+
+        public void ApplyForce(AetherVector2 force)
+        {
+            ChassisBody.ApplyForce(force);
+        }
+
+        public void DampenMovement()
+        {
+            AetherVector2 velocity = ChassisBody.LinearVelocity;
+            ChassisBody.LinearVelocity = new AetherVector2(velocity.X * 0.8f, velocity.Y);
+        }
+
+        public void RotateTurret(float direction)
+        {
+            _motorSpeed = direction * 3f;
+            _turretJoint.MotorSpeed = _motorSpeed;
+        }
+
+        public void StopRotatingTurret()
+        {
+            _motorSpeed = 0f;
+            _turretJoint.MotorSpeed = 0f;
+        }
+
+        public void ApplyRecoil(float gunAngle)
+        {
+            float recoilAngle = gunAngle + MathHelper.Pi;
+            float recoilForce = 50f;
+
+            AetherVector2 recoilImpulse = new AetherVector2(
+                (float)System.Math.Cos(recoilAngle) * recoilForce,
+                (float)System.Math.Sin(recoilAngle) * recoilForce
+            );
+
+            TurretBody.ApplyLinearImpulse(recoilImpulse);
+        }
+
+        public Vector2 GetChassisPosition()
+        {
+            return new Vector2(ChassisBody.Position.X * 100f, ChassisBody.Position.Y * 100f);
+        }
+
+        public Vector2 GetTurretPosition()
+        {
+            return new Vector2(TurretBody.Position.X * 100f, TurretBody.Position.Y * 100f);
+        }
+
+        public float GetTurretRotation()
+        {
+            return TurretBody.Rotation;
+        }
+
+        public float GetChassisRotation()
+        {
+            return ChassisBody.Rotation;
+        }
+    }
+
+    public class Gun : GameObject
+    {
+        private TextureRegion _gun;
+
+        private TimeSpan _elapsed;
+        private TimeSpan _shootCooldown;
+
+        private float _gunLength => _gun.Width;
+
+        private Animation _recoil_animation;
+
+        private static readonly TimeSpan RELOAD_DELAY = TimeSpan.FromSeconds(1);
+
+        private bool _isRecoiling;
+
+        public void Initialize(ContentManager content)
+        {
+            TextureAtlas atlas = TextureAtlas.FromFile(content, "atlas.xml");
+            _gun = atlas.GetRegion("gun");
+            _recoil_animation = atlas.GetAnimation("recoil-anim");
+            _recoil_animation.Loop = false;
+            Origin = new Vector2(_gun.Width, _gun.Height) * 0.5f;
+            Width = _gun.Width;
+            Height = _gun.Height;
+        }
+
+        public override void Draw(SpriteBatch spriteBatch)
+        {
+            _gun.Draw(
+                spriteBatch,
+                Position,
+                Color,
+                Rotation,
+                new Vector2(0, _gun.Height * 0.5f),
+                Scale,
+                Effects,
+                LayerDepth + 0.02f
+            );
+
+            if (_isRecoiling)
+            {
+                TextureRegion recoilFrame = _recoil_animation.CurrentFrame;
+                Vector2 gunTip = new Vector2(
+                    Position.X + (float)Math.Cos(Rotation) * (_gunLength + 6.0f),
+                    Position.Y + (float)Math.Sin(Rotation) * (_gunLength + 6.0f)
+                );
+                recoilFrame.Draw(
+                    spriteBatch,
+                    gunTip,
+                    Color.White,
+                    Rotation,
+                    new Vector2(recoilFrame.Width * 0.5f, recoilFrame.Height * 0.5f),
+                    Scale,
+                    Effects,
+                    LayerDepth + 0.05f
+                );
+            }
+
+            // Draw collision bounds (debug)
+        }
+
+        public override void Update(GameTime gameTime)
+        {
+            _elapsed += gameTime.ElapsedGameTime;
+            UpdateAnimationFrame(_elapsed);
+
+            // Sync position from physics body
+        }
+
+        private void UpdateAnimationFrame(TimeSpan elapsedTime)
+        {
+            float deltaTime = (float)elapsedTime.TotalSeconds;
+
+            // Update recoil animation
+            if (_isRecoiling)
+            {
+                _recoil_animation.Update(deltaTime);
+                if (_recoil_animation.HasFinished)
+                    _isRecoiling = false;
+            }
+        }
+
+        public bool CanShoot()
+        {
+            if (_elapsed < _shootCooldown)
+                return false;
+            return true;
+        }
+
+        public void Shoot()
+        {
+            _shootCooldown = _elapsed + RELOAD_DELAY;
+            _isRecoiling = true;
+            _recoil_animation.Reset();
+        }
+    }
+
+    public class Tank : GameObject
     {
         private AmmunitionType _ammunitionType;
-        private bool _isRecoiling;
         private int _currentFrame;
         private TimeSpan _elapsed;
         private readonly ContentManager _content;
         private TextureRegion _body;
         private TextureRegion _turret;
-        private TextureRegion _gun;
         private Animation _body_animation;
-        private Animation _recoil_animation;
-        public bool isGrounded { set; get; }
-
-        public bool Stationary { set; get; } = false;
-
-        // Physics
-        public Vector2 Velocity { get; set; }
-        public Vector2 Acceleration { get; set; }
-        public float Drag { get; set; } = 0.9f;
-        public float Mass { get; set; } = 1f;
-
-        // Rendering
-        public Color Color { get; set; } = Color.White;
-        public Vector2 Scale { get; set; } = Vector2.One;
-        public SpriteEffects Effects { get; set; } = SpriteEffects.None;
-        public float LayerDepth { get; set; } = 0.0f;
-
-        // Gun and shooting
-        private float _gunRotation = -MathHelper.PiOver2;
-        private float _shootCooldown = 0f;
-        private const float SHOOT_DELAY = 1f; // Changed to seconds
-        private const float AccelerationForce = 200f;
-
-        public bool NeedsTraction { get; set; } = true;
-
-        // Gun position helpers
-        private Vector2 _gunPosition => new Vector2(Position.X, Position.Y - Height / 2);
-        private float _gunLength => _gun.Width;
-
-        Polygon Collision { get; }
+        public Gun Gun;
 
         public Tank(ContentManager content, AmmunitionType type = AmmunitionType.Missile)
         {
@@ -66,92 +295,28 @@ namespace SpaceTanks
             TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
             _body_animation = atlas.GetAnimation("tank-green-moving");
             _body = atlas.GetRegion("tank-green-1");
-            _recoil_animation = atlas.GetAnimation("recoil-anim");
-            _recoil_animation.Loop = false;
             _turret = atlas.GetRegion("turret");
-            _gun = atlas.GetRegion("gun");
+            Gun = new Gun();
+            Gun.Initialize(content);
 
             Origin = new Vector2(_body.Width, _body.Height) * 0.5f;
-            Width = _body.Width * Scale.X;
-            Height = _body.Height * Scale.Y;
-
-            Acceleration = Vector2.Zero;
-            Velocity = Vector2.Zero;
-
-            Collision = new Polygon([
-                Vector2.Zero,
-                new Vector2(Width, 0),
-                new Vector2(Width, Height),
-                new Vector2(0, Height),
-            ]);
-        }
-
-        public void MoveLeft()
-        {
-            Acceleration = new Vector2(-AccelerationForce, 0);
-        }
-
-        public void MoveRight()
-        {
-            Acceleration = new Vector2(AccelerationForce, 0);
-        }
-
-        public void StopMoving()
-        {
-            Acceleration = Vector2.Zero;
-        }
-
-        public void RotateGunLeft(float deltaTime)
-        {
-            _gunRotation -= MathHelper.PiOver2 * deltaTime;
-            _gunRotation = MathHelper.Clamp(
-                _gunRotation,
-                -MathHelper.Pi * 7 / 8,
-                -MathHelper.Pi * 1 / 8
-            );
-        }
-
-        public void RotateGunRight(float deltaTime)
-        {
-            _gunRotation += MathHelper.PiOver2 * deltaTime;
-            _gunRotation = MathHelper.Clamp(
-                _gunRotation,
-                -MathHelper.Pi * 7 / 8,
-                -MathHelper.Pi * 1 / 8
-            );
-        }
-
-        public Projectile Shoot()
-        {
-            if (_shootCooldown > 0f)
-                return null;
-
-            _shootCooldown = SHOOT_DELAY;
-            _isRecoiling = true;
-            _recoil_animation.Reset();
-
-            Vector2 gunTip = new Vector2(
-                _gunPosition.X + (float)Math.Cos(_gunRotation) * _gunLength,
-                _gunPosition.Y + (float)Math.Sin(_gunRotation) * _gunLength
-            );
-
-            Missile projectile = new Missile(_content, gunTip, _gunRotation, speed: 250f);
-            return projectile;
+            Width = _body.Width;
+            Height = _body.Height;
+            Gun.Position = new Vector2(Width / 2f, Height - 30f);
         }
 
         public override void Update(GameTime gameTime)
         {
             _elapsed += gameTime.ElapsedGameTime;
             UpdateAnimationFrame(_elapsed);
+            Gun.Update(gameTime);
+
+            // Sync position from physics body
         }
 
         private void UpdateAnimationFrame(TimeSpan elapsedTime)
         {
             float deltaTime = (float)elapsedTime.TotalSeconds;
-
-            // Update shoot cooldown
-            if (_shootCooldown > 0f)
-                _shootCooldown -= deltaTime;
 
             // Update body animation
             if (elapsedTime >= _body_animation.Delay)
@@ -162,34 +327,15 @@ namespace SpaceTanks
                     _currentFrame = 0;
                 _body = _body_animation.Frames[_currentFrame];
             }
-
-            // Update recoil animation
-            if (_isRecoiling)
-            {
-                _recoil_animation.Update(deltaTime);
-                if (_recoil_animation.HasFinished)
-                    _isRecoiling = false;
-            }
         }
 
         public override void Draw(SpriteBatch spriteBatch)
         {
-            // Draw gun
-            _gun.Draw(
-                spriteBatch,
-                _gunPosition,
-                Color,
-                _gunRotation,
-                new Vector2(0, _gun.Height * 0.5f),
-                Scale,
-                Effects,
-                LayerDepth + 0.02f
-            );
-
+            Gun.Draw(spriteBatch);
             // Draw turret
             _turret.Draw(
                 spriteBatch,
-                _gunPosition,
+                Position,
                 Color,
                 0,
                 new Vector2(_turret.Width * 0.5f, _turret.Height * 0.5f),
@@ -201,40 +347,7 @@ namespace SpaceTanks
             // Draw body
             _body.Draw(spriteBatch, Position, Color, 0f, Origin, Scale, Effects, LayerDepth);
 
-            // Draw recoil effect
-            if (_isRecoiling)
-            {
-                TextureRegion recoilFrame = _recoil_animation.CurrentFrame;
-                Vector2 gunTip = new Vector2(
-                    _gunPosition.X + (float)Math.Cos(_gunRotation) * (_gunLength + 6.0f),
-                    _gunPosition.Y + (float)Math.Sin(_gunRotation) * (_gunLength + 6.0f)
-                );
-                recoilFrame.Draw(
-                    spriteBatch,
-                    gunTip,
-                    Color.White,
-                    _gunRotation,
-                    new Vector2(recoilFrame.Width * 0.5f, recoilFrame.Height * 0.5f),
-                    Scale,
-                    Effects,
-                    LayerDepth + 0.05f
-                );
-            }
-
             // Draw collision bounds (debug)
-            DrawBounds(spriteBatch);
-        }
-
-        private void DrawBounds(SpriteBatch spriteBatch) { }
-
-        public Polygon GetBounds()
-        {
-            return Position + Collision - Origin;
-        }
-
-        public string GetGroupName()
-        {
-            return "Tank";
         }
     }
 }

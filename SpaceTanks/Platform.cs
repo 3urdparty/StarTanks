@@ -5,191 +5,399 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
+using nkast.Aether.Physics2D.Common.Decomposition;
+using nkast.Aether.Physics2D.Dynamics;
+using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
+using Vertices = nkast.Aether.Physics2D.Common.Vertices;
 
 namespace SpaceTanks
 {
-    public class Platform : GameObject, ICollidable
+    public class PlatformPhysics : PhysicsEntity
     {
-        private readonly ContentManager _content;
-        private TextureAtlas _atlas;
+        public Body Body { get; private set; }
+        private const float PlatformMass = 1000f;
 
-        // Tile regions - 3x3 grid
-        private TextureRegion _tile00;
-        private TextureRegion _tile01;
-        private TextureRegion _tile02;
-        private TextureRegion _tile10;
-        private TextureRegion _tile11;
-        private TextureRegion _tile12;
-        private TextureRegion _tile20;
-        private TextureRegion _tile21;
-        private TextureRegion _tile22;
-
-        // Platform tile data
-        private int[,] _platformTiles;
-        private int _platformWidth;
-        private int _platformHeight;
-        private int _tileSize = 32;
-
-        // Tile type constants
-        private const int Empty = 0;
-        private const int Tile00 = 1;
-        private const int Tile01 = 2;
-        private const int Tile02 = 3;
-        private const int Tile10 = 4;
-        private const int Tile11 = 5;
-        private const int Tile12 = 6;
-        private const int Tile20 = 7;
-        private const int Tile21 = 8;
-        private const int Tile22 = 9;
-
-        private Texture2D _debugPixel;
-
-        Polygon Collision { get; }
-
-        public Platform(ContentManager content, int width, int height, int tileSize = 32)
+        public override List<Body> GetBodies()
         {
-            _content = content;
-            LoadTiles();
-
-            // Width = width;
-            // Height = height;
-            CreatePlatform(width, height, tileSize);
-
-            //TODO: Fix this
-            Collision = new Polygon([
-                Vector2.Zero,
-                new Vector2(Width / 3, 0),
-                new Vector2(2 * Width / 3, Height / 2),
-                new Vector2(Width * 3 / 3, Height),
-                new Vector2(0, Height),
-            ]);
+            return [Body];
         }
 
-        private void LoadTiles()
+        public void Initialize(World world, Platform platform)
         {
-            _atlas = TextureAtlas.FromFile(_content, "tilemap-atlas.xml");
+            AetherVector2 physicsPos = new AetherVector2(
+                platform.Position.X / 100f,
+                platform.Position.Y / 100f
+            );
 
-            _tile00 = _atlas.GetRegion("00");
-            _tile01 = _atlas.GetRegion("01");
-            _tile02 = _atlas.GetRegion("02");
-            _tile10 = _atlas.GetRegion("10");
-            _tile11 = _atlas.GetRegion("11");
-            _tile12 = _atlas.GetRegion("12");
-            _tile20 = _atlas.GetRegion("20");
-            _tile21 = _atlas.GetRegion("21");
-            _tile22 = _atlas.GetRegion("22");
+            Body = world.CreateBody(physicsPos, 0, BodyType.Static);
+            Body.Tag = "Platform";
+
+            // This now uses the exact platform outline
+        }
+
+        public void Construct(World world, Platform platform)
+        {
+            AetherVector2 physicsPos = new AetherVector2(
+                platform.Position.X / 100f,
+                platform.Position.Y / 100f
+            );
+
+            // IMPORTANT: remove old body first
+            if (Body != null)
+            {
+                world.Remove(Body);
+                Body = null;
+            }
+
+            Body = world.CreateBody(physicsPos, 0, BodyType.Static);
+            Body.Tag = "Platform";
+            CreateBodyFromVertices(Body, platform.GetVertices(), 10f);
+        }
+
+        private void CreateBodyFromVertices(Body body, List<Vector2> gameVertices, float density)
+        {
+            if (gameVertices == null || gameVertices.Count < 3)
+                return;
+
+            // Triangulate concave polygon -> triangles (convex)
+            var triangles = EarClipper.Triangulate(gameVertices);
+
+            var parts = new List<nkast.Aether.Physics2D.Common.Vertices>(triangles.Count);
+
+            foreach (var tri in triangles)
+            {
+                var v = new nkast.Aether.Physics2D.Common.Vertices(3);
+                v.Add(new AetherVector2(tri.A.X / 100f, tri.A.Y / 100f));
+                v.Add(new AetherVector2(tri.B.X / 100f, tri.B.Y / 100f));
+                v.Add(new AetherVector2(tri.C.X / 100f, tri.C.Y / 100f));
+                parts.Add(v);
+            }
+
+            var fixtures = Body.CreateCompoundPolygon(parts, density);
+            foreach (var f in fixtures)
+            {
+                f.Friction = 0.8f;
+                f.Restitution = 0.2f;
+            }
+        }
+
+        private AetherVector2 ConvertToPhysics(Vector2 vertex, float halfWidth, float halfHeight)
+        {
+            // Convert from top-left origin to center origin, then to physics units
+            float localX = (vertex.X - halfWidth) / 100f;
+            float localY = (vertex.Y - halfHeight) / 100f;
+            return new AetherVector2(localX, localY);
+        }
+
+        public Vector2 GetPosition()
+        {
+            return new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
         }
 
         /// <summary>
-        /// Create a rectangular platform at the given position with the specified dimensions.
+        /// Sync the Platform's shape from the physics body
         /// </summary>
-        public void CreatePlatform(int platformWidth, int platformHeight, int tileSize = 32)
+        public void Sync(Platform platform)
         {
-            _tileSize = tileSize;
-            _platformWidth = platformWidth;
-            _platformHeight = platformHeight;
+            if (Body == null)
+                return;
+            Update(platform);
+        }
 
-            // Create tile map for the platform
-            _platformTiles = new int[platformWidth, platformHeight];
+        public void Update(Platform platform)
+        {
+            if (Body == null)
+                return;
 
-            for (int x = 0; x < platformWidth; x++)
+            // Sync render transform from physics
+            platform.Position = new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
+            platform.Rotation = Body.Rotation;
+        }
+    }
+
+    public class Platform : GameObject
+    {
+        private GraphicsDevice _gd;
+
+        private RenderTarget2D _fillRT;
+        private bool _fillDirty = true;
+
+        // Heightfield surface (local space): x in [0..Width], y negative up to 0
+        private readonly List<Vector2> _surface = new();
+        private const float SurfaceStep = 10f;
+
+        // Polygon used for physics + mask triangulation (local space, concave allowed)
+        private readonly List<Vector2> _poly = new();
+
+        // Mask render target (local-space 0..Width, 0..Height)
+        private RenderTarget2D _maskRT;
+        private bool _maskDirty = true;
+
+        // Tile pattern (atlas region)
+        private TextureRegion _tileRegion;
+        private bool _usePointSampling = true;
+
+        // For drawing filled triangles into _maskRT
+        private BasicEffect _maskEffect2D;
+
+        // Effect that multiplies Tile * MaskAlpha
+        // You need to load it in your Content project (MGCB).
+        // It should sample Texture0 (tile) and Texture1 (mask).
+        private Effect _clipEffect;
+
+        public Platform(int width, int height)
+        {
+            Width = width;
+            Height = height;
+            Origin = new Vector2(Width, Height) * 0.5f;
+
+            // Initialize surface at flat top y = -Height
+            _surface.Clear();
+            for (float x = 0; x <= Width; x += SurfaceStep)
+                _surface.Add(new Vector2(x, -Height));
+
+            RebuildPolygonFromSurface();
+        }
+
+        public void LoadContent(ContentManager content, GraphicsDevice graphicsDevice)
+        {
+            _gd = graphicsDevice;
+
+            // Load atlas region
+            TextureAtlas atlas = TextureAtlas.FromFile(content, "tilemap-atlas.xml");
+            _tileRegion = atlas.GetRegion("11"); // this is a TextureRegion
+
+            _maskRT = new RenderTarget2D(
+                _gd,
+                Width,
+                Height,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None
+            );
+            _fillRT = new RenderTarget2D(
+                _gd,
+                Width,
+                Height,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None
+            );
+
+            _fillDirty = true;
+            _maskDirty = true;
+            // Create mask render target (local-space size)
+            _maskRT = new RenderTarget2D(
+                _gd,
+                Width,
+                Height,
+                false,
+                SurfaceFormat.Color,
+                DepthFormat.None
+            );
+
+            // BasicEffect for drawing the mask triangles (in RT space)
+            _maskEffect2D = new BasicEffect(_gd)
             {
-                for (int y = 0; y < platformHeight; y++)
-                {
-                    bool isLeft = (x == 0);
-                    bool isRight = (x == platformWidth - 1);
-                    bool isTop = (y == 0);
-                    bool isBottom = (y == platformHeight - 1);
+                VertexColorEnabled = true,
+                TextureEnabled = false,
+                World = Matrix.Identity,
+                View = Matrix.Identity,
+                Projection = Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1),
+            };
 
-                    if (isTop && isLeft)
-                        _platformTiles[x, y] = Tile00;
-                    else if (isTop && isRight)
-                        _platformTiles[x, y] = Tile02;
-                    else if (isBottom && isLeft)
-                        _platformTiles[x, y] = Tile20;
-                    else if (isBottom && isRight)
-                        _platformTiles[x, y] = Tile22;
-                    else if (isTop)
-                        _platformTiles[x, y] = Tile01;
-                    else if (isBottom)
-                        _platformTiles[x, y] = Tile21;
-                    else if (isLeft)
-                        _platformTiles[x, y] = Tile10;
-                    else if (isRight)
-                        _platformTiles[x, y] = Tile12;
-                    else
-                        _platformTiles[x, y] = Tile11;
-                }
+            // Load your clipping shader (must exist in Content)
+            // Name it e.g. "MaskedTile"
+            _clipEffect = content.Load<Effect>("MaskedTile");
+        }
+
+        // -----------------------------
+        // Terrain deformation (stacking)
+        // -----------------------------
+        public void AddCrater(Vector2 craterCenterLocal, float craterTopWidth, float craterDepth)
+        {
+            if (craterTopWidth <= 0f || craterDepth <= 0f)
+                return;
+
+            float cx = craterCenterLocal.X;
+            float halfW = craterTopWidth * 0.5f;
+
+            float left = MathF.Max(0f, cx - halfW);
+            float right = MathF.Min(Width, cx + halfW);
+
+            // Parabolic falloff: 1 at center, 0 at edges
+            for (int i = 0; i < _surface.Count; i++)
+            {
+                float x = _surface[i].X;
+                if (x < left || x > right)
+                    continue;
+
+                float t = (x - cx) / halfW; // [-1..1]
+                float w = 1f - (t * t); // [0..1]
+                float delta = craterDepth * w;
+
+                // Lowering surface means y increases toward 0 (since top is negative)
+                float newY = _surface[i].Y + delta;
+
+                // Clamp so we never reach or cross the bottom (0)
+                newY = MathF.Min(newY, -1f);
+
+                _surface[i] = new Vector2(x, newY);
             }
 
-            // Set width and height based on tile dimensions
-            Width = platformWidth * tileSize;
-            Height = platformHeight * tileSize;
+            RebuildPolygonFromSurface();
+            _maskDirty = true;
         }
 
-        public override void Update(GameTime gameTime)
+        private void RebuildFillRT()
         {
-            // Platform is static
+            if (_gd == null || _fillRT == null || _tileRegion == null)
+                return;
+
+            _gd.SetRenderTarget(_fillRT);
+            _gd.Clear(Color.Transparent);
+
+            using (var sb = new SpriteBatch(_gd))
+            {
+                sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+
+                // This property name is correct in your code:
+                Rectangle src = _tileRegion.SourceRectangle;
+
+                int tileW = src.Width;
+                int tileH = src.Height;
+
+                // Tile across the entire local RT
+                for (int y = 0; y < Height; y += tileH)
+                {
+                    for (int x = 0; x < Width; x += tileW)
+                    {
+                        int w = Math.Min(tileW, Width - x);
+                        int h = Math.Min(tileH, Height - y);
+
+                        // Crop source at edges if needed
+                        var srcCropped = new Rectangle(src.X, src.Y, w, h);
+                        var dst = new Rectangle(x, y, w, h);
+
+                        sb.Draw(_tileRegion.Texture, dst, srcCropped, Color.White);
+                    }
+                }
+
+                sb.End();
+            }
+
+            _gd.SetRenderTarget(null);
+            _fillDirty = false;
         }
+
+        private void RebuildPolygonFromSurface()
+        {
+            _poly.Clear();
+
+            // Bottom edge (y = 0)
+            _poly.Add(new Vector2(0, 0));
+            _poly.Add(new Vector2(Width, 0));
+
+            // Top surface from right -> left (keeps a consistent winding for triangulation)
+            for (int i = _surface.Count - 1; i >= 0; i--)
+                _poly.Add(_surface[i]);
+
+            // Ensure exact left end exists (optional safety)
+            if (_surface.Count > 0 && _surface[0].X != 0f)
+                _poly.Add(new Vector2(0f, _surface[0].Y));
+        }
+
+        public List<Vector2> GetVertices() => _poly;
+
+        // -----------------------------
+        // Mask rendering (RT)
+        // -----------------------------
+        private void RebuildMaskRT()
+        {
+            if (_gd == null || _maskRT == null || _maskEffect2D == null)
+                return;
+
+            _gd.SetRenderTarget(_maskRT);
+            _gd.Clear(Color.Transparent);
+
+            // Triangulate polygon in local space
+            var tris = EarClipper.Triangulate(_poly);
+
+            if (tris == null || tris.Count == 0)
+            {
+                _gd.SetRenderTarget(null);
+                _maskDirty = false;
+                return;
+            }
+
+            // Build triangle list vertices (convert local y to RT y)
+            var vtx = new VertexPositionColor[tris.Count * 3];
+
+            for (int i = 0; i < tris.Count; i++)
+            {
+                var t = tris[i];
+
+                vtx[i * 3 + 0] = new VertexPositionColor(new Vector3(ToRT(t.A), 0f), Color.White);
+                vtx[i * 3 + 1] = new VertexPositionColor(new Vector3(ToRT(t.B), 0f), Color.White);
+                vtx[i * 3 + 2] = new VertexPositionColor(new Vector3(ToRT(t.C), 0f), Color.White);
+            }
+
+            foreach (var pass in _maskEffect2D.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                _gd.DrawUserPrimitives(PrimitiveType.TriangleList, vtx, 0, tris.Count);
+            }
+
+            _gd.SetRenderTarget(null);
+            _maskDirty = false;
+        }
+
+        // Local poly: y in [-Height..0]
+        // RT: y in [0..Height] downward
+        private Vector2 ToRT(Vector2 local) => new Vector2(local.X, local.Y + Height);
 
         public override void Draw(SpriteBatch spriteBatch)
         {
-            if (_platformTiles == null)
+            if (_gd == null || _clipEffect == null || _tileRegion == null)
                 return;
 
-            for (int x = 0; x < _platformWidth; x++)
-            {
-                for (int y = 0; y < _platformHeight; y++)
-                {
-                    int tileType = _platformTiles[x, y];
-                    if (tileType == Empty)
-                        continue;
+            if (_fillDirty)
+                RebuildFillRT();
 
-                    TextureRegion region = GetTileRegion(tileType);
-                    Vector2 tilePosition = Position + new Vector2(x * _tileSize, y * _tileSize);
+            if (_maskDirty)
+                RebuildMaskRT();
 
-                    region.Draw(
-                        spriteBatch,
-                        tilePosition,
-                        Color.White,
-                        0f,
-                        Vector2.Zero,
-                        new Vector2(
-                            (float)_tileSize / region.Width,
-                            (float)_tileSize / region.Height
-                        ),
-                        SpriteEffects.None,
-                        0.0f
-                    );
-                }
-            }
+            spriteBatch.End();
+
+            // Set effect textures explicitly
+            _clipEffect.Parameters["TileTexture"].SetValue(_fillRT);
+            _clipEffect.Parameters["MaskTexture"].SetValue(_maskRT);
+
+            spriteBatch.Begin(
+                SpriteSortMode.Deferred,
+                BlendState.AlphaBlend,
+                samplerState: SamplerState.PointClamp, // IMPORTANT: clamp now, no wrap needed here
+                depthStencilState: DepthStencilState.None,
+                rasterizerState: RasterizerState.CullNone,
+                effect: _clipEffect
+            );
+
+            Vector2 topLeft = Position - new Vector2(Width, Height) * 0.5f;
+
+            var destRect = new Rectangle(
+                (int)MathF.Round(topLeft.X + Origin.X),
+                (int)MathF.Round(topLeft.Y - Origin.Y),
+                Width,
+                Height
+            );
+
+            // Draw fillRT (UV is 0..1), shader multiplies by maskRT (also 0..1)
+            spriteBatch.Draw(_fillRT, destRect, Color.White);
+
+            spriteBatch.End();
+            spriteBatch.Begin();
         }
 
-        public Polygon GetBounds()
-        {
-            return Collision + Position - Origin;
-        }
-
-        public string GetGroupName()
-        {
-            return "Platform";
-        }
-
-        private TextureRegion GetTileRegion(int tileType)
-        {
-            return tileType switch
-            {
-                Tile00 => _tile00,
-                Tile01 => _tile01,
-                Tile02 => _tile02,
-                Tile10 => _tile10,
-                Tile11 => _tile11,
-                Tile12 => _tile12,
-                Tile20 => _tile20,
-                Tile21 => _tile21,
-                Tile22 => _tile22,
-                _ => _tile11,
-            };
-        }
+        public override void Update(GameTime gameTime) { }
     }
 }
