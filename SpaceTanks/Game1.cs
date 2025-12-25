@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -44,12 +45,19 @@ public class Game1 : Core
         AetherBoundsRenderer.Initialize(GraphicsDevice);
 
         // Initialize game objects
-        Tank tank = new Tank(Content);
-        tank.Position = new MGVector2(300, 0);
-        TankPhysics TankPhysics = new TankPhysics();
-        TankPhysics.Initialize(_physicsWorld, tank);
-        _gameObjects.Add(tank);
-        _bodies.Add(TankPhysics);
+        Tank tank1 = new Tank(Content);
+        tank1.Position = new MGVector2(350, 0);
+        TankPhysics TankPhysics1 = new TankPhysics();
+        TankPhysics1.Initialize(_physicsWorld, tank1);
+        _gameObjects.Add(tank1);
+        _bodies.Add(TankPhysics1);
+
+        Tank tank2 = new Tank(Content);
+        tank2.Position = new MGVector2(400, 0);
+        TankPhysics TankPhysics2 = new TankPhysics();
+        TankPhysics2.Initialize(_physicsWorld, tank2);
+        _gameObjects.Add(tank2);
+        _bodies.Add(TankPhysics2);
 
         Platform platform = new Platform(500, 100);
         platform.LoadContent(Content, GraphicsDevice);
@@ -59,15 +67,55 @@ public class Game1 : Core
 
         _gameObjects.Add(platform);
         _bodies.Add(platformPhysics);
+
+        platformPhysics.OnCollision += (Fixture fixtureA, Fixture fixtureB, Contact contact) =>
+        {
+            Body body = fixtureA.Body;
+            Body otherBody = fixtureB.Body;
+
+            Vector2 hitPoint = fixtureA.Body.Position;
+
+            if (otherBody.Tag is string tag && tag == "Projectile")
+            {
+                Vector2 normal;
+                FixedArray2<Vector2> points;
+                contact.GetWorldManifold(out normal, out points);
+
+                // Primary contact point (meters)
+                Vector2 hitPointMeters = points[0];
+
+                // Convert to pixel/world space for your game
+                var hitPointPx = new MGVector2(hitPointMeters.X * 100f, hitPointMeters.Y * 100f);
+
+                float leftWorldX = platform.Position.X;
+                float localX = hitPointPx.X - leftWorldX;
+
+                System.Console.WriteLine($"{hitPointMeters} {hitPointPx} {leftWorldX} {localX}");
+                _postStep.Enqueue(() =>
+                {
+                    platform.Shake(6f, 0.18f); // magnitude px, duration sec
+                    platform.AddCrater(new MGVector2(localX, 0f), 30f, 5f);
+                    platformPhysics.Construct(_physicsWorld, platform);
+                    platform.PrepareRenderTargets();
+                });
+            }
+
+            return true;
+        };
     }
+
+    private Effect _platformClipEffect;
 
     protected override void LoadContent()
     {
         // Load any additional content here
+        _platformClipEffect = Content.Load<Effect>("MaskedTile");
     }
 
     protected override void Update(GameTime gameTime)
     {
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        float timeStep = Math.Min(deltaTime, 0.016f); // Cap at ~60fps
         Tank tank = (Tank)_gameObjects[0];
         TankPhysics tankBody = (TankPhysics)_bodies[0];
         if (
@@ -76,7 +124,6 @@ public class Game1 : Core
         )
             Exit();
 
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         KeyboardState keyboardState = Keyboard.GetState();
 
         // Tank movement
@@ -88,27 +135,14 @@ public class Game1 : Core
         {
             tankBody.ApplyForce(new Vector2(5, 0));
         }
-        else
-        {
-            // Dampen horizontal velocity when no input
-            // Vector2 currentVelocity = tankBody.LinearVelocity;
-            // tankBody.LinearVelocity = new Vector2(
-            //     currentVelocity.X * 0.8f,
-            //     currentVelocity.Y
-            // );
-        }
 
         // Gun rotation
         if (keyboardState.IsKeyDown(Keys.Left))
         {
-            // tank.RotateGunLeft(deltaTime);
-            //
             tankBody.RotateTurret(-1);
         }
         else if (keyboardState.IsKeyDown(Keys.Right))
         {
-            // tank.RotateGunLeft(deltaTime);
-
             tankBody.RotateTurret(1);
         }
         else
@@ -116,18 +150,23 @@ public class Game1 : Core
             tankBody.StopRotatingTurret();
         }
 
-        // Shooting
-        if (keyboardState.IsKeyDown(Keys.Space))
+        if (keyboardState.IsKeyDown(Keys.Q))
         {
             if (tank.Gun.CanShoot())
             {
                 tank.Gun.Shoot();
-                Missile projectile = new Missile();
+                HomingMissile projectile = new HomingMissile();
+
+                Tank tank2 = _gameObjects
+                    .OfType<Tank>()
+                    .FirstOrDefault(t => !ReferenceEquals(t, tank));
+                projectile.Target = tank2;
+
                 projectile.Initialize(Content);
+
                 projectile.Position = tank.Gun.Position + new MGVector2(0, -tank.Gun.Width);
                 projectile.Rotation = tank.Gun.Rotation;
-
-                ProjectilePhysics projectilePhysics = new ProjectilePhysics();
+                HomingMissilePhysics projectilePhysics = new HomingMissilePhysics();
                 projectilePhysics.Initialize(_physicsWorld, projectile);
                 projectilePhysics.Body.OnCollision += (
                     Fixture fixtureA,
@@ -137,39 +176,10 @@ public class Game1 : Core
                 {
                     Body otherBody = fixtureB.Body;
 
-                    Vector2 hitPoint = fixtureA.Body.Position;
-
-                    if (otherBody.Tag is string tag && tag == "Platform")
+                    if (!tankBody.Contains(otherBody))
                     {
-                        Platform platform = (Platform)_gameObjects[1];
-                        PlatformPhysics platformPhysics = (PlatformPhysics)_bodies[1];
-
-                        Vector2 normal;
-                        FixedArray2<Vector2> points;
-                        contact.GetWorldManifold(out normal, out points);
-
-                        // Primary contact point (meters)
-                        Vector2 hitPointMeters = points[0];
-
-                        // Convert to pixel/world space for your game
-                        var hitPointPx = new MGVector2(
-                            hitPointMeters.X * 100f,
-                            hitPointMeters.Y * 100f
-                        );
-
-                        float leftWorldX = platform.Position.X;
-                        float localX = hitPointPx.X - leftWorldX;
-
-                        System.Console.WriteLine(
-                            $"{hitPointMeters} {hitPointPx} {leftWorldX} {localX}"
-                        );
                         _postStep.Enqueue(() =>
                         {
-                            platform.AddCrater(new MGVector2(localX, 0f), 30f, 5f);
-
-                            // platform.AddCrater(new MGVector2(platform.Width * 0.6f, 0f), 120f, 30f);
-                            platformPhysics.Construct(_physicsWorld, platform);
-
                             projectilePhysics.Body.BodyType = BodyType.Static;
                             projectile.Explode();
                         });
@@ -200,6 +210,66 @@ public class Game1 : Core
             }
         }
 
+        // Shooting
+        if (keyboardState.IsKeyDown(Keys.Space))
+        {
+            if (tank.Gun.CanShoot())
+            {
+                tank.Gun.Shoot();
+                Missile projectile = new Missile();
+                projectile.Initialize(Content);
+
+                projectile.Position = tank.Gun.Position + new MGVector2(0, -tank.Gun.Width);
+                projectile.Rotation = tank.Gun.Rotation;
+                MissilePhysics projectilePhysics = new MissilePhysics();
+                projectilePhysics.Initialize(_physicsWorld, projectile);
+
+                projectile.Position = tank.Gun.Position + new MGVector2(0, -tank.Gun.Width);
+                projectile.Rotation = tank.Gun.Rotation;
+
+                projectilePhysics.Body.OnCollision += (
+                    Fixture fixtureA,
+                    Fixture fixtureB,
+                    Contact contact
+                ) =>
+                {
+                    _postStep.Enqueue(() =>
+                    {
+                        if (!tankBody.Contains(fixtureB.Body))
+                        {
+                            projectile.Explode();
+                            projectilePhysics.Body.BodyType = BodyType.Static;
+                        }
+                    });
+
+                    return true;
+                };
+
+                // Apply force in the direction the gun is pointing
+                float forceStrength = 20f; // Adjust as needed
+
+                Vector2 force = new Vector2(
+                    (float)System.Math.Cos(projectile.Rotation) * forceStrength,
+                    (float)System.Math.Sin(projectile.Rotation) * forceStrength
+                );
+
+                var v = projectilePhysics.Body.LinearVelocity;
+
+                if (v.LengthSquared() > 0.0001f)
+                {
+                    float angle = (float)Math.Atan2(v.Y, v.X);
+                    projectilePhysics.Body.Rotation = angle;
+                }
+                projectilePhysics.Body.ApplyForce(force);
+
+                float speed = projectilePhysics.Body.LinearVelocity.Length();
+                projectilePhysics.Body.AngularVelocity = speed * 25f; // Adjust multiplier to taste
+
+                _gameObjects.Add(projectile);
+                _bodies.Add(projectilePhysics);
+            }
+        }
+
         for (int i = 0; i < _bodies.Count; i++)
         {
             if (_gameObjects[i].Destroyed)
@@ -211,12 +281,14 @@ public class Game1 : Core
             else
             {
                 _bodies[i].CheckCollisions(_physicsWorld);
-                _bodies[i].Sync(_gameObjects[i]);
+                _bodies[i].Update(_gameObjects[i]);
                 _gameObjects[i].Update(gameTime);
             }
         }
+
         // Use smaller time steps for accuracy
-        float timeStep = Math.Min(deltaTime, 0.016f); // Cap at ~60fps
+
+        foreach (var body in _bodies) { }
         _physicsWorld.Step(timeStep);
         // World is now unlocked
         while (_postStep.Count > 0)
@@ -230,14 +302,26 @@ public class Game1 : Core
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
+
+        // Pass 1: normal sprites (everything except platform)
         SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
-
-        foreach (GameObject gameObject in _gameObjects)
+        foreach (var go in _gameObjects)
         {
-            gameObject.Draw(SpriteBatch);
+            if (go is not Platform)
+                go.Draw(SpriteBatch);
         }
+        SpriteBatch.End();
 
-        // Draw physics bounds - toggle with 'D' key
+        // Pass 2: platform with clip shader
+        SpriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.PointClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone,
+            effect: _platformClipEffect
+        );
+
         if (_debugMode)
         {
             AetherBoundsRenderer.DrawWorldAABBs(
@@ -246,17 +330,15 @@ public class Game1 : Core
                 Color.Orange,
                 Color.Green
             );
-
-            // PlatformPhysics platformPhysics = (PlatformPhysics)_bodies[1];
-            // AetherBoundsRenderer.DrawBodyFixtures(
-            //     SpriteBatch,
-            //     platformPhysics.Body,
-            //     Color.Lime,
-            //     2f
-            // );
         }
 
+        foreach (var go in _gameObjects)
+        {
+            if (go is Platform platform)
+                platform.Draw(SpriteBatch); // draws only the final quad, no state changes
+        }
         SpriteBatch.End();
+
         base.Draw(gameTime);
     }
 }

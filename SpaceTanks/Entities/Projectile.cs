@@ -25,9 +25,6 @@ namespace SpaceTanks
     {
         public Body Body { get; private set; }
 
-        /// <summary>
-        /// Initialize physics body for a projectile.
-        /// </summary>
         public override List<Body> GetBodies()
         {
             return [Body];
@@ -40,7 +37,6 @@ namespace SpaceTanks
 
         public void Initialize(World world, Projectile projectile)
         {
-            // Create projectile body
             AetherVector2 physicsPos = new AetherVector2(
                 projectile.Position.X / 100f,
                 projectile.Position.Y / 100f
@@ -57,25 +53,18 @@ namespace SpaceTanks
 
             fixture.Friction = 0.3f;
             fixture.Restitution = 0.4f;
-            // Add collision callbacks
-            // fixture.BeginContact += OnBeginContact;
-            // fixture.EndContact += OnEndContact;
-
-            // Body.Rotation = projectile.Rotation;
-
-            // Set initial velocity based on gun angle and speed
-            // Convert pixel speed to physics speed
             float speed = 10f;
             float physicsSpeed = speed / 100f;
             Body.LinearVelocity = new AetherVector2(
                 (float)System.Math.Cos(projectile.Rotation) * physicsSpeed,
                 (float)System.Math.Sin(projectile.Rotation) * physicsSpeed
             );
+            Body.Tag = "Projectile";
         }
 
         // In ProjectilePhysics
 
-        public override void Sync(GameObject gameObject)
+        public override void Update(GameObject gameObject)
         {
             Projectile projectile = (Projectile)gameObject;
             if (Body != null)
@@ -88,9 +77,6 @@ namespace SpaceTanks
             }
         }
 
-        /// <summary>
-        /// Get projectile position in pixels.
-        /// </summary>
         public Vector2 GetPosition()
         {
             return new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
@@ -106,12 +92,29 @@ namespace SpaceTanks
     {
         private Tank tank;
 
+        protected TextureRegion _sprite;
+
         public Projectile() { }
 
         public virtual void Initialize(ContentManager content) { }
 
         public override void Update(GameTime gameTime) { }
 
-        public abstract override void Draw(SpriteBatch spriteBatch);
+        public override void Draw(SpriteBatch spriteBatch)
+        {
+            {
+                // Draw missile sprite
+                _sprite.Draw(
+                    spriteBatch,
+                    Position,
+                    Color,
+                    Rotation,
+                    new Vector2(_sprite.Width * 0.5f, _sprite.Height * 0.5f),
+                    Vector2.One,
+                    Effects,
+                    LayerDepth
+                );
+            }
+        }
     }
 }

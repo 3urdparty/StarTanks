@@ -7,6 +7,7 @@ using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
 using nkast.Aether.Physics2D.Common.Decomposition;
 using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Contacts;
 using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
 using Vertices = nkast.Aether.Physics2D.Common.Vertices;
 
@@ -14,12 +15,22 @@ namespace SpaceTanks
 {
     public class PlatformPhysics : PhysicsEntity
     {
+        public event OnCollisionEventHandler OnCollision;
         public Body Body { get; private set; }
         private const float PlatformMass = 1000f;
 
         public override List<Body> GetBodies()
         {
             return [Body];
+        }
+
+        private bool ForwardOnCollision(Fixture fixtureA, Fixture fixtureB, Contact contact)
+        {
+            // Invoke all subscribed handlers
+            if (OnCollision != null)
+                return OnCollision.Invoke(fixtureA, fixtureB, contact);
+
+            return true;
         }
 
         public void Initialize(World world, Platform platform)
@@ -52,6 +63,9 @@ namespace SpaceTanks
             Body = world.CreateBody(physicsPos, 0, BodyType.Static);
             Body.Tag = "Platform";
             CreateBodyFromVertices(Body, platform.GetVertices(), 10f);
+
+            // Reattach preserved collision handler
+            Body.OnCollision += ForwardOnCollision;
         }
 
         private void CreateBodyFromVertices(Body body, List<Vector2> gameVertices, float density)
@@ -108,6 +122,7 @@ namespace SpaceTanks
         {
             if (Body == null)
                 return;
+            platform.Shake(6f, 0.18f);
 
             // Sync render transform from physics
             platform.Position = new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
@@ -144,6 +159,19 @@ namespace SpaceTanks
         // You need to load it in your Content project (MGCB).
         // It should sample Texture0 (tile) and Texture1 (mask).
         private Effect _clipEffect;
+
+        private float _shakeTimeLeft = 0f;
+        private float _shakeDuration = 0f;
+        private float _shakeMagnitude = 0f;
+        private Vector2 _shakeOffset = Vector2.Zero;
+        private readonly Random _rng = new Random();
+
+        public void Shake(float magnitudePx, float durationSec)
+        {
+            _shakeMagnitude = Math.Max(_shakeMagnitude, magnitudePx);
+            _shakeDuration = Math.Max(_shakeDuration, durationSec);
+            _shakeTimeLeft = _shakeDuration;
+        }
 
         public Platform(int width, int height)
         {
@@ -209,6 +237,8 @@ namespace SpaceTanks
             // Load your clipping shader (must exist in Content)
             // Name it e.g. "MaskedTile"
             _clipEffect = content.Load<Effect>("MaskedTile");
+
+            PrepareRenderTargets();
         }
 
         // -----------------------------
@@ -290,6 +320,15 @@ namespace SpaceTanks
             _fillDirty = false;
         }
 
+        // in Platform
+        public void PrepareRenderTargets()
+        {
+            if (_fillDirty)
+                RebuildFillRT();
+            if (_maskDirty)
+                RebuildMaskRT();
+        }
+
         private void RebuildPolygonFromSurface()
         {
             _poly.Clear();
@@ -358,31 +397,10 @@ namespace SpaceTanks
 
         public override void Draw(SpriteBatch spriteBatch)
         {
-            if (_gd == null || _clipEffect == null || _tileRegion == null)
-                return;
-
-            if (_fillDirty)
-                RebuildFillRT();
-
-            if (_maskDirty)
-                RebuildMaskRT();
-
-            spriteBatch.End();
-
-            // Set effect textures explicitly
             _clipEffect.Parameters["TileTexture"].SetValue(_fillRT);
             _clipEffect.Parameters["MaskTexture"].SetValue(_maskRT);
 
-            spriteBatch.Begin(
-                SpriteSortMode.Deferred,
-                BlendState.AlphaBlend,
-                samplerState: SamplerState.PointClamp, // IMPORTANT: clamp now, no wrap needed here
-                depthStencilState: DepthStencilState.None,
-                rasterizerState: RasterizerState.CullNone,
-                effect: _clipEffect
-            );
-
-            Vector2 topLeft = Position - new Vector2(Width, Height) * 0.5f;
+            var topLeft = (Position + _shakeOffset) - new Vector2(Width, Height) * 0.5f;
 
             var destRect = new Rectangle(
                 (int)MathF.Round(topLeft.X + Origin.X),
@@ -391,13 +409,33 @@ namespace SpaceTanks
                 Height
             );
 
-            // Draw fillRT (UV is 0..1), shader multiplies by maskRT (also 0..1)
             spriteBatch.Draw(_fillRT, destRect, Color.White);
-
-            spriteBatch.End();
-            spriteBatch.Begin();
         }
 
-        public override void Update(GameTime gameTime) { }
+        public override void Update(GameTime gameTime)
+        {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (_shakeTimeLeft > 0f)
+            {
+                _shakeTimeLeft -= dt;
+
+                // decay 1..0
+                float t = _shakeTimeLeft / Math.Max(_shakeDuration, 0.0001f);
+                float amp = _shakeMagnitude * t;
+
+                // random offset each frame
+                float ox = ((float)_rng.NextDouble() * 2f - 1f) * amp;
+                float oy = ((float)_rng.NextDouble() * 2f - 1f) * amp;
+                _shakeOffset = new Vector2(ox, oy);
+
+                if (_shakeTimeLeft <= 0f)
+                {
+                    _shakeOffset = Vector2.Zero;
+                    _shakeMagnitude = 0f;
+                    _shakeDuration = 0f;
+                }
+            }
+        }
     }
 }

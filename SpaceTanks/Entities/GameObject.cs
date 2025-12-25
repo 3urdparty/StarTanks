@@ -37,6 +37,7 @@ namespace SpaceTanks
         public bool Destroyed { get; protected set; } = false;
 
         public abstract void Draw(SpriteBatch spriteBatch);
-        public abstract void Update(GameTime gameTime);
+
+        public virtual void Update(GameTime gameTime) { }
     }
 }

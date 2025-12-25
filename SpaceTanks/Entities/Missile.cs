@@ -9,10 +9,11 @@ using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
 
 namespace SpaceTanks
 {
+    public class MissilePhysics : ProjectilePhysics { }
+
     public class Missile : Projectile
     {
-        private TextureRegion _sprite;
-        private Animation _explosionAnimation;
+        protected Animation _explosionAnimation;
         private bool _isExploding = false;
 
         public Missile()
@@ -73,17 +74,7 @@ namespace SpaceTanks
             }
             else
             {
-                // Draw missile sprite
-                _sprite.Draw(
-                    spriteBatch,
-                    Position,
-                    Color,
-                    Rotation,
-                    new Vector2(_sprite.Width * 0.5f, _sprite.Height * 0.5f),
-                    Vector2.One,
-                    Effects,
-                    LayerDepth
-                );
+                base.Draw(spriteBatch);
             }
         }
 

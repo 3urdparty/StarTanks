@@ -38,10 +38,19 @@ namespace SpaceTanks
             }
         }
 
-        /// <summary>
-        /// Sync physics bodies to a game object's visual properties.
-        /// </summary>
-        public virtual void Sync(GameObject gameObject)
+        public bool Contains(Body body)
+        {
+            if (body == null)
+                return false;
+
+            var bodies = GetBodies();
+            if (bodies == null)
+                return false;
+
+            return bodies.Contains(body);
+        }
+
+        public virtual void Update(GameObject gameObject)
         {
             if (gameObject == null)
                 return;

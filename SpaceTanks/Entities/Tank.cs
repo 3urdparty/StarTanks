@@ -39,7 +39,7 @@ namespace SpaceTanks
             return [ChassisBody, TurretBody];
         }
 
-        public override void Sync(GameObject gameObject)
+        public override void Update(GameObject gameObject)
         {
             Tank tank = (Tank)gameObject;
             if (ChassisBody != null)
