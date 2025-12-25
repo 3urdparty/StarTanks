@@ -1,192 +1,182 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameLibrary;
 using MonoGameLibrary.Graphics;
-using nkast.Aether.Physics2D.Dynamics;
-using AetherVector2 = nkast.Aether.Physics2D.Common.Vector2;
 
 namespace SpaceTanks
 {
-    public class Platform : GameObject
+    public class HomingMissile : Projectile
     {
-        private readonly ContentManager _content;
-        private TextureAtlas _atlas;
+        private Animation _explosionAnimation;
+        private bool _isExploding = false;
 
-        // Tile regions - 3x3 grid
-        private TextureRegion _tile00;
-        private TextureRegion _tile01;
-        private TextureRegion _tile02;
-        private TextureRegion _tile10;
-        private TextureRegion _tile11;
-        private TextureRegion _tile12;
-        private TextureRegion _tile20;
-        private TextureRegion _tile21;
-        private TextureRegion _tile22;
+        // --- HOMING STATE ---
+        public Tank Target { get; set; }
 
-        // Platform tile data
-        private int[,] _platformTiles;
-        private int _platformWidth;
-        private int _platformHeight;
-        private int _tileSize = 32;
+        // Direction/heading stored in game (pixels space). Unit vector.
+        public Vector2 HeadingDir { get; private set; } = new Vector2(1, 0);
 
-        // Tile type constants
-        private const int Empty = 0;
-        private const int Tile00 = 1;
-        private const int Tile01 = 2;
-        private const int Tile02 = 3;
-        private const int Tile10 = 4;
-        private const int Tile11 = 5;
-        private const int Tile12 = 6;
-        private const int Tile20 = 7;
-        private const int Tile21 = 8;
-        private const int Tile22 = 9;
+        // Heading angle in radians (MonoGame convention; adjust if your sprite points up by default).
+        public float HeadingAngle { get; private set; } = 0f;
 
-        // Physics
-        public Body PhysicsBody { get; set; }
+        // --- TUNABLES ---
+        public float MaxTurnRateRadPerSec { get; set; } = MathF.PI * 2.0f; // 360 deg/s
+        public float Thrust { get; set; } = 35f; // in "physics units" force (tune)
+        public float MaxSpeed { get; set; } = 12f; // meters/sec if using Aether scale
+        public float SeekStrength { get; set; } = 1.0f; // 0..1 smoothing blend
 
-        public Platform(ContentManager content, int width, int height, int tileSize = 32)
+        // Optional predictive lead (good if targets move)
+        public bool UseLead { get; set; } = true;
+        public float LeadTime { get; set; } = 0.35f; // seconds
+
+        public HomingMissile()
+            : base()
         {
-            _content = content;
-            LoadTiles();
-
-            CreatePlatform(width, height, tileSize);
+            Name = "homing-missile";
         }
 
-        private void LoadTiles()
+        public void Initialize(ContentManager content)
         {
-            _atlas = TextureAtlas.FromFile(_content, "tilemap-atlas.xml");
+            TextureAtlas atlas = TextureAtlas.FromFile(content, "atlas.xml");
+            _sprite = atlas.GetRegion("missile-2");
+            Origin = new Vector2(_sprite.Width, _sprite.Height) * 0.5f;
+            Width = _sprite.Width;
+            Height = _sprite.Height;
 
-            _tile00 = _atlas.GetRegion("00");
-            _tile01 = _atlas.GetRegion("01");
-            _tile02 = _atlas.GetRegion("02");
-            _tile10 = _atlas.GetRegion("10");
-            _tile11 = _atlas.GetRegion("11");
-            _tile12 = _atlas.GetRegion("12");
-            _tile20 = _atlas.GetRegion("20");
-            _tile21 = _atlas.GetRegion("21");
-            _tile22 = _atlas.GetRegion("22");
-        }
-
-        /// <summary>
-        /// Create a rectangular platform at the given position with the specified dimensions.
-        /// </summary>
-        public void CreatePlatform(int platformWidth, int platformHeight, int tileSize = 32)
-        {
-            _tileSize = tileSize;
-            _platformWidth = platformWidth;
-            _platformHeight = platformHeight;
-
-            // Create tile map for the platform
-            _platformTiles = new int[platformWidth, platformHeight];
-
-            for (int x = 0; x < platformWidth; x++)
-            {
-                for (int y = 0; y < platformHeight; y++)
-                {
-                    bool isLeft = (x == 0);
-                    bool isRight = (x == platformWidth - 1);
-                    bool isTop = (y == 0);
-                    bool isBottom = (y == platformHeight - 1);
-
-                    if (isTop && isLeft)
-                        _platformTiles[x, y] = Tile00;
-                    else if (isTop && isRight)
-                        _platformTiles[x, y] = Tile02;
-                    else if (isBottom && isLeft)
-                        _platformTiles[x, y] = Tile20;
-                    else if (isBottom && isRight)
-                        _platformTiles[x, y] = Tile22;
-                    else if (isTop)
-                        _platformTiles[x, y] = Tile01;
-                    else if (isBottom)
-                        _platformTiles[x, y] = Tile21;
-                    else if (isLeft)
-                        _platformTiles[x, y] = Tile10;
-                    else if (isRight)
-                        _platformTiles[x, y] = Tile12;
-                    else
-                        _platformTiles[x, y] = Tile11;
-                }
-            }
-
-            // Set width and height based on tile dimensions
-            Width = platformWidth * tileSize;
-            Height = platformHeight * tileSize;
-
-            Origin = new Vector2(Width, Height) * 0.5f;
-        }
-
-        /// <summary>
-        /// Initialize the physics body for this platform. Call this after creating the Body in Game1.
-        /// </summary>
-        public void InitializePhysicsBody(Body physicsBody)
-        {
-            PhysicsBody = physicsBody;
+            _explosionAnimation = atlas.GetAnimation("explosion-anim");
+            _explosionAnimation.Loop = false;
         }
 
         public override void Update(GameTime gameTime)
         {
-            // Platform is static - sync position from physics body if needed
-            // if (PhysicsBody != null)
-            // {
-            //     Position = new Vector2(
-            //         PhysicsBody.Position.X * 100f,
-            //         PhysicsBody.Position.Y * 100f
-            //     );
-            // }
+            base.Update(gameTime);
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (_isExploding)
+            {
+                _explosionAnimation.Update(dt);
+                if (_explosionAnimation.HasFinished)
+                    Destroyed = true;
+            }
         }
 
         public override void Draw(SpriteBatch spriteBatch)
         {
-            if (_platformTiles == null)
-                return;
-
-            for (int x = 0; x < _platformWidth; x++)
+            if (_isExploding)
             {
-                for (int y = 0; y < _platformHeight; y++)
+                if (_explosionAnimation.CurrentFrame != null)
                 {
-                    int tileType = _platformTiles[x, y];
-                    if (tileType == Empty)
-                        continue;
-
-                    TextureRegion region = GetTileRegion(tileType);
-                    Vector2 tilePosition = Position + new Vector2(x * _tileSize, y * _tileSize);
-
-                    region.Draw(
+                    _explosionAnimation.CurrentFrame.Draw(
                         spriteBatch,
-                        tilePosition,
-                        Color.White,
+                        Position,
+                        Color,
                         0f,
-                        Vector2.Zero,
                         new Vector2(
-                            (float)_tileSize / region.Width,
-                            (float)_tileSize / region.Height
+                            _explosionAnimation.CurrentFrame.Width * 0.5f,
+                            _explosionAnimation.CurrentFrame.Height * 0.5f
                         ),
-                        SpriteEffects.None,
-                        0.0f
+                        Vector2.One,
+                        Effects,
+                        LayerDepth
                     );
                 }
             }
+            else
+            {
+                _sprite.Draw(
+                    spriteBatch,
+                    Position,
+                    Color,
+                    Rotation,
+                    new Vector2(_sprite.Width * 0.5f, _sprite.Height * 0.5f),
+                    Vector2.One,
+                    Effects,
+                    LayerDepth
+                );
+            }
         }
 
-        private TextureRegion GetTileRegion(int tileType)
+        public void Explode()
         {
-            return tileType switch
+            if (_isExploding)
+                return;
+            _isExploding = true;
+            _explosionAnimation.Reset();
+        }
+
+        // --- HOMING MATH HELPERS (MonoGame Vector2) ---
+        private static Vector2 SafeNormalize(Vector2 v)
+        {
+            float len = v.Length();
+            if (len < 1e-6f)
+                return Vector2.Zero;
+            return v / len;
+        }
+
+        private static float WrapAngle(float a)
+        {
+            while (a > MathF.PI)
+                a -= MathF.Tau;
+            while (a < -MathF.PI)
+                a += MathF.Tau;
+            return a;
+        }
+
+        private static float MoveTowardsAngle(float current, float target, float maxDelta)
+        {
+            float delta = WrapAngle(target - current);
+            delta = Math.Clamp(delta, -maxDelta, maxDelta);
+            return current + delta;
+        }
+
+        // This gives you the desired heading direction & angle (in screen/pixel space),
+        // you call it from your physics controller each Update.
+        public void ComputeDesiredHeading(
+            Vector2 missilePosPx,
+            Vector2 missileVelPxPerSec,
+            Vector2 targetPosPx,
+            Vector2 targetVelPxPerSec,
+            float dt
+        )
+        {
+            if (Target == null)
+                return;
+
+            Vector2 aimPoint = targetPosPx;
+
+            if (UseLead)
             {
-                Tile00 => _tile00,
-                Tile01 => _tile01,
-                Tile02 => _tile02,
-                Tile10 => _tile10,
-                Tile11 => _tile11,
-                Tile12 => _tile12,
-                Tile20 => _tile20,
-                Tile21 => _tile21,
-                Tile22 => _tile22,
-                _ => _tile11,
-            };
+                // Simple lead: aim at future target position
+                aimPoint = targetPosPx + targetVelPxPerSec * LeadTime;
+            }
+
+            Vector2 toTarget = aimPoint - missilePosPx;
+            Vector2 desiredDir = SafeNormalize(toTarget);
+            if (desiredDir == Vector2.Zero)
+                return;
+
+            float desiredAngle = MathF.Atan2(desiredDir.Y, desiredDir.X);
+
+            // turn-rate limit
+            HeadingAngle = MoveTowardsAngle(HeadingAngle, desiredAngle, MaxTurnRateRadPerSec * dt);
+
+            // convert angle back to unit direction
+            HeadingDir = new Vector2(MathF.Cos(HeadingAngle), MathF.Sin(HeadingAngle));
+
+            // Optional smoothing if you want (blends old dir with new dir)
+            if (SeekStrength < 1f)
+            {
+                HeadingDir = SafeNormalize(Vector2.Lerp(HeadingDir, desiredDir, SeekStrength));
+                if (HeadingDir != Vector2.Zero)
+                    HeadingAngle = MathF.Atan2(HeadingDir.Y, HeadingDir.X);
+            }
+
+            // Your sprite rotation should match heading.
+            // If your sprite points "right" in texture, use HeadingAngle.
+            // If it points "up", subtract PI/2 etc.
+            Rotation = HeadingAngle;
         }
     }
 }
