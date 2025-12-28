@@ -23,7 +23,7 @@ namespace SpaceTanks
 {
     public class ProjectilePhysics : PhysicsEntity
     {
-        public Body Body { get; private set; }
+        public Body Body { get; protected set; }
 
         public override List<Body> GetBodies()
         {
@@ -35,7 +35,7 @@ namespace SpaceTanks
             Mass = 10f;
         }
 
-        public void Initialize(World world, Projectile projectile)
+        public virtual void Initialize(World world, Projectile projectile)
         {
             AetherVector2 physicsPos = new AetherVector2(
                 projectile.Position.X / 100f,

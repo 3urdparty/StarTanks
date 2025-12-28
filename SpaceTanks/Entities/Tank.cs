@@ -30,10 +30,6 @@ namespace SpaceTanks
         private const float TurretMass = 1f;
         private const float ChassisMass = 10f;
 
-        /// <summary>
-        /// Initialize all physics bodies for the tank.
-        /// </summary>
-        ///
         public override List<Body> GetBodies()
         {
             return [ChassisBody, TurretBody];
@@ -44,13 +40,11 @@ namespace SpaceTanks
             Tank tank = (Tank)gameObject;
             if (ChassisBody != null)
             {
-                // // Update position from physics (convert from physics units to pixels)
                 tank.Position = new Vector2(
                     ChassisBody.Position.X * 100f,
                     ChassisBody.Position.Y * 100f
                 );
 
-                // Update rotation from physics
                 tank.Rotation = ChassisBody.Rotation;
 
                 tank.Gun.Position = new Vector2(
@@ -58,14 +52,12 @@ namespace SpaceTanks
                     TurretBody.Position.Y * 100f
                 );
 
-                // Update rotation from physics
                 tank.Gun.Rotation = TurretBody.Rotation;
             }
         }
 
         public void Initialize(World world, Tank tank)
         {
-            // Create chassis body
             AetherVector2 chassisPhysicsPos = new AetherVector2(
                 tank.Position.X / 100f,
                 tank.Position.Y / 100f
@@ -82,7 +74,6 @@ namespace SpaceTanks
             chassisFixture.Friction = 0.5f;
             chassisFixture.Restitution = 0.1f;
 
-            // Create turret body
             AetherVector2 turretPhysicsPos = new AetherVector2(
                 tank.Position.X / 100f,
                 (tank.Position.Y - 0) / 100f
@@ -118,6 +109,7 @@ namespace SpaceTanks
             };
 
             world.Add(_turretJoint);
+            base.Initialize(world, tank);
         }
 
         public void ApplyForce(AetherVector2 force)
@@ -242,15 +234,11 @@ namespace SpaceTanks
         {
             _elapsed += gameTime.ElapsedGameTime;
             UpdateAnimationFrame(_elapsed);
-
-            // Sync position from physics body
         }
 
         private void UpdateAnimationFrame(TimeSpan elapsedTime)
         {
             float deltaTime = (float)elapsedTime.TotalSeconds;
-
-            // Update recoil animation
             if (_isRecoiling)
             {
                 _recoil_animation.Update(deltaTime);
@@ -276,14 +264,26 @@ namespace SpaceTanks
 
     public class Tank : GameObject
     {
+        private float _redFlashTimer = 0f;
         private AmmunitionType _ammunitionType;
         private int _currentFrame;
         private TimeSpan _elapsed;
         private readonly ContentManager _content;
         private TextureRegion _body;
+
+        // private TextureRegion _hull_bar_outer;
+        // private TextureRegion _hull_bar_inner;
         private TextureRegion _turret;
         private Animation _body_animation;
+
+        private TimeSpan _damageCooldown;
         public Gun Gun;
+        public HealthBar HealthBar;
+
+        private static readonly TimeSpan DAMAGE_DELAY = TimeSpan.FromSeconds(0.1);
+        public bool IsTakingDamage => _elapsed < _damageCooldown;
+
+        private float Health { set; get; } = 100;
 
         public Tank(ContentManager content, AmmunitionType type = AmmunitionType.Missile)
         {
@@ -295,9 +295,13 @@ namespace SpaceTanks
             TextureAtlas atlas = TextureAtlas.FromFile(_content, "atlas.xml");
             _body_animation = atlas.GetAnimation("tank-green-moving");
             _body = atlas.GetRegion("tank-green-1");
+            // _hull_bar_outer = atlas.GetRegion("hull-bar-outer");
+            // _hull_bar_inner = atlas.GetRegion("hull-bar-inner");
             _turret = atlas.GetRegion("turret");
             Gun = new Gun();
+            HealthBar = new HealthBar();
             Gun.Initialize(content);
+            HealthBar.Initialize(content);
 
             Origin = new Vector2(_body.Width, _body.Height) * 0.5f;
             Width = _body.Width;
@@ -308,10 +312,22 @@ namespace SpaceTanks
         public override void Update(GameTime gameTime)
         {
             _elapsed += gameTime.ElapsedGameTime;
+
             UpdateAnimationFrame(_elapsed);
             Gun.Update(gameTime);
 
             // Sync position from physics body
+        }
+
+        public void TakeHealth(float health)
+        {
+            if (!IsTakingDamage)
+            {
+                _damageCooldown = _elapsed + DAMAGE_DELAY;
+            }
+
+            Health -= health;
+            HealthBar.Value = Health;
         }
 
         private void UpdateAnimationFrame(TimeSpan elapsedTime)
@@ -321,7 +337,6 @@ namespace SpaceTanks
             // Update body animation
             if (elapsedTime >= _body_animation.Delay)
             {
-                _elapsed -= _body_animation.Delay;
                 _currentFrame++;
                 if (_currentFrame >= _body_animation.Frames.Count)
                     _currentFrame = 0;
@@ -331,7 +346,17 @@ namespace SpaceTanks
 
         public override void Draw(SpriteBatch spriteBatch)
         {
+            Color tint = Color.White;
+
+            if (IsTakingDamage)
+            {
+                tint = Color.Lerp(Color.White, Color.Red, 0.5f);
+            }
+
             Gun.Draw(spriteBatch);
+            HealthBar.Position = Position + new Vector2(0, -Height - 10f);
+            HealthBar.Scale = new Vector2(0.5f, 0.5f);
+            HealthBar.Draw(spriteBatch);
             // Draw turret
             _turret.Draw(
                 spriteBatch,
@@ -345,9 +370,81 @@ namespace SpaceTanks
             );
 
             // Draw body
-            _body.Draw(spriteBatch, Position, Color, 0f, Origin, Scale, Effects, LayerDepth);
+            _body.Draw(spriteBatch, Position, tint, 0f, Origin, Scale, Effects, LayerDepth);
 
             // Draw collision bounds (debug)
+        }
+    }
+
+    public class HealthBar : GameObject
+    {
+        private TextureRegion _hullBarOuter;
+        private TextureRegion _hullBarInner;
+
+        public float Value = 100f; // 0..100
+
+        public void Initialize(ContentManager content)
+        {
+            TextureAtlas atlas = TextureAtlas.FromFile(content, "atlas.xml");
+
+            _hullBarOuter = atlas.GetRegion("hull-bar-outer");
+            _hullBarInner = atlas.GetRegion("hull-bar-inner");
+
+            Origin = new Vector2(_hullBarOuter.Width, _hullBarOuter.Height) * 0.5f;
+            Width = _hullBarOuter.Width;
+            Height = _hullBarOuter.Height;
+        }
+
+        public override void Draw(SpriteBatch spriteBatch)
+        {
+            // Clamp health
+            float health01 = MathHelper.Clamp(Value / 100f, 0f, 1f);
+
+            // Draw outer frame
+            _hullBarOuter.Draw(
+                spriteBatch,
+                Position,
+                Color.White,
+                0f,
+                new Vector2(_hullBarOuter.Width * 0.5f, _hullBarOuter.Height * 0.5f),
+                Scale,
+                Effects,
+                LayerDepth
+            );
+
+            if (health01 <= 0f)
+                return;
+
+            // Compute clipped width
+            int fullWidth = _hullBarInner.Width;
+            int clippedWidth = (int)(fullWidth * health01);
+
+            Rectangle sourceRect = new Rectangle(0, 0, clippedWidth, _hullBarInner.Height);
+
+            // Adjust origin so left side stays fixed
+            Vector2 innerOrigin = new Vector2(
+                _hullBarInner.Width * 0.5f,
+                _hullBarInner.Height * 0.5f
+            );
+
+            // Offset position so bar drains left → right
+            Vector2 offset = new Vector2(-(fullWidth - clippedWidth) * 0.5f * Scale.X, 0f);
+
+            _hullBarInner.Draw(
+                spriteBatch,
+                Position + offset,
+                Color.White,
+                0f,
+                innerOrigin,
+                Scale,
+                Effects,
+                LayerDepth + 0.001f
+            );
+        }
+
+        public override void Update(GameTime gameTime)
+        {
+            // No animation needed unless you want smoothing
         }
     }
 }

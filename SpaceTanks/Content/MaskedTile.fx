@@ -18,7 +18,10 @@ float4 MainPS(float4 color : COLOR0, float2 uv : TEXCOORD0) : COLOR0
 {
     float4 tile = tex2D(TileSampler, uv) * color;
     float  mask = tex2D(MaskSampler, uv).a;
-    tile.a *= mask;
+
+    // Apply mask to everything (safe for both straight + premultiplied cases)
+    tile *= mask;
+
     return tile;
 }
 

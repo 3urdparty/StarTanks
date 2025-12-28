@@ -21,9 +21,11 @@ namespace SpaceTanks;
 public class Game1 : Core
 {
     private GraphicsDeviceManager _graphics;
-    private List<Projectile> projectiles = new List<Projectile>();
     private List<GameObject> _gameObjects = new List<GameObject>();
     private List<PhysicsEntity> _bodies = new List<PhysicsEntity>();
+
+    private Camera2D _camera;
+    Sky sky;
 
     // Physics world
     private World _physicsWorld;
@@ -38,6 +40,13 @@ public class Game1 : Core
     {
         base.Initialize();
 
+        _camera = new Camera2D
+        {
+            Position = MGVector2.Zero, // start at world origin
+        };
+
+        sky = new Sky(GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height, seed: 123);
+        sky.Initialize(Content, "atlas.xml");
         // Initialize physics world with gravity
         _physicsWorld = new World(new Vector2(0, 9.81f));
 
@@ -48,20 +57,36 @@ public class Game1 : Core
         Tank tank1 = new Tank(Content);
         tank1.Position = new MGVector2(350, 0);
         TankPhysics TankPhysics1 = new TankPhysics();
+
         TankPhysics1.Initialize(_physicsWorld, tank1);
         _gameObjects.Add(tank1);
         _bodies.Add(TankPhysics1);
 
         Tank tank2 = new Tank(Content);
-        tank2.Position = new MGVector2(400, 0);
+        tank2.Position = new MGVector2(700, 0);
         TankPhysics TankPhysics2 = new TankPhysics();
+
         TankPhysics2.Initialize(_physicsWorld, tank2);
+
+        TankPhysics2.OnCollision += (Fixture fixtureA, Fixture fixtureB, Contact contact) =>
+        {
+            if (fixtureB.Body.Tag is string tag && tag == "Projectile")
+            {
+                if (TankPhysics2.Contains(fixtureA.Body))
+                {
+                    tank2.TakeHealth(10);
+                }
+            }
+
+            return true;
+        };
+
         _gameObjects.Add(tank2);
         _bodies.Add(TankPhysics2);
 
-        Platform platform = new Platform(500, 100);
+        Platform platform = new Platform(1280, 200);
         platform.LoadContent(Content, GraphicsDevice);
-        platform.Position = new MGVector2(300, 300);
+        platform.Position = new MGVector2(0, 720);
         PlatformPhysics platformPhysics = new PlatformPhysics();
         platformPhysics.Construct(_physicsWorld, platform);
 
@@ -90,7 +115,6 @@ public class Game1 : Core
                 float leftWorldX = platform.Position.X;
                 float localX = hitPointPx.X - leftWorldX;
 
-                System.Console.WriteLine($"{hitPointMeters} {hitPointPx} {leftWorldX} {localX}");
                 _postStep.Enqueue(() =>
                 {
                     platform.Shake(6f, 0.18f); // magnitude px, duration sec
@@ -102,6 +126,8 @@ public class Game1 : Core
 
             return true;
         };
+
+        LoadContent();
     }
 
     private Effect _platformClipEffect;
@@ -211,7 +237,7 @@ public class Game1 : Core
         }
 
         // Shooting
-        if (keyboardState.IsKeyDown(Keys.Space))
+        if (keyboardState.IsKeyDown(Keys.X))
         {
             if (tank.Gun.CanShoot())
             {
@@ -270,6 +296,64 @@ public class Game1 : Core
             }
         }
 
+        // Shooting
+        if (keyboardState.IsKeyDown(Keys.C))
+        {
+            if (tank.Gun.CanShoot())
+            {
+                tank.Gun.Shoot();
+                Grenade grenade = new Grenade();
+                grenade.Initialize(Content);
+
+                grenade.Position = tank.Gun.Position + new MGVector2(0, -tank.Gun.Width);
+                grenade.Rotation = tank.Gun.Rotation;
+                GrenadePhysics grenadePhysics = new GrenadePhysics();
+                grenadePhysics.Initialize(_physicsWorld, grenade);
+
+                grenade.Position = tank.Gun.Position + new MGVector2(0, -tank.Gun.Width);
+                grenade.Rotation = tank.Gun.Rotation;
+
+                grenadePhysics.Body.OnCollision += (
+                    Fixture fixtureA,
+                    Fixture fixtureB,
+                    Contact contact
+                ) =>
+                {
+                    if (!tankBody.Contains(fixtureB.Body))
+                    {
+                        _postStep.Enqueue(() =>
+                        {
+                            grenade.StartCountDown();
+                        });
+                    }
+                    return true;
+                };
+
+                // Apply force in the direction the gun is pointing
+                float forceStrength = 40f; // Adjust as needed
+
+                Vector2 force = new Vector2(
+                    (float)System.Math.Cos(grenade.Rotation) * forceStrength,
+                    (float)System.Math.Sin(grenade.Rotation) * forceStrength
+                );
+
+                var v = grenadePhysics.Body.LinearVelocity;
+
+                if (v.LengthSquared() > 0.0001f)
+                {
+                    float angle = (float)Math.Atan2(v.Y, v.X);
+                    grenadePhysics.Body.Rotation = angle;
+                }
+                grenadePhysics.Body.ApplyForce(force);
+
+                float speed = grenadePhysics.Body.LinearVelocity.Length();
+                grenadePhysics.Body.AngularVelocity = speed * 25f; // Adjust multiplier to taste
+
+                _gameObjects.Add(grenade);
+                _bodies.Add(grenadePhysics);
+            }
+        }
+
         for (int i = 0; i < _bodies.Count; i++)
         {
             if (_gameObjects[i].Destroyed)
@@ -280,7 +364,6 @@ public class Game1 : Core
             }
             else
             {
-                _bodies[i].CheckCollisions(_physicsWorld);
                 _bodies[i].Update(_gameObjects[i]);
                 _gameObjects[i].Update(gameTime);
             }
@@ -305,6 +388,7 @@ public class Game1 : Core
 
         // Pass 1: normal sprites (everything except platform)
         SpriteBatch.Begin(samplerState: SamplerState.PointClamp);
+        sky.Draw(SpriteBatch, cameraWorldTopLeft: _camera.Position);
         foreach (var go in _gameObjects)
         {
             if (go is not Platform)
@@ -314,7 +398,7 @@ public class Game1 : Core
 
         // Pass 2: platform with clip shader
         SpriteBatch.Begin(
-            SpriteSortMode.Deferred,
+            SpriteSortMode.Immediate,
             BlendState.AlphaBlend,
             SamplerState.PointClamp,
             DepthStencilState.None,
@@ -324,12 +408,12 @@ public class Game1 : Core
 
         if (_debugMode)
         {
-            AetherBoundsRenderer.DrawWorldAABBs(
-                SpriteBatch,
-                _physicsWorld,
-                Color.Orange,
-                Color.Green
-            );
+            // AetherBoundsRenderer.DrawWorldAABBs(
+            //     SpriteBatch,
+            //     _physicsWorld,
+            //     Color.Orange,
+            //     Color.Green
+            // );
         }
 
         foreach (var go in _gameObjects)

@@ -15,22 +15,12 @@ namespace SpaceTanks
 {
     public class PlatformPhysics : PhysicsEntity
     {
-        public event OnCollisionEventHandler OnCollision;
         public Body Body { get; private set; }
         private const float PlatformMass = 1000f;
 
         public override List<Body> GetBodies()
         {
             return [Body];
-        }
-
-        private bool ForwardOnCollision(Fixture fixtureA, Fixture fixtureB, Contact contact)
-        {
-            // Invoke all subscribed handlers
-            if (OnCollision != null)
-                return OnCollision.Invoke(fixtureA, fixtureB, contact);
-
-            return true;
         }
 
         public void Initialize(World world, Platform platform)

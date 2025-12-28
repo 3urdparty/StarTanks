@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using MonoGameLibrary;
 using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Contacts;
 
 namespace SpaceTanks
 {
@@ -11,32 +11,29 @@ namespace SpaceTanks
     /// </summary>
     public abstract class PhysicsEntity
     {
+        public event OnCollisionEventHandler OnCollision;
+
+        protected bool ForwardOnCollision(Fixture fixtureA, Fixture fixtureB, Contact contact)
+        {
+            if (OnCollision != null)
+                return OnCollision.Invoke(fixtureA, fixtureB, contact);
+            return true;
+        }
+
         public float Mass { set; get; } = 1f;
         public abstract List<Body> GetBodies();
 
         public delegate void CollisionHandler(Body otherBody, World world, Vector2 contactPosition);
-        public event CollisionHandler OnCollision; // Add Vector2 for contact position
 
-        public List<Body> IgnoreCollisions { get; set; } = new List<Body>();
-
-        public void CheckCollisions(World world)
+        public virtual void Initialize(World world, GameObject gameObject)
         {
-            var bodies = GetBodies();
-            if (bodies == null)
-                return;
-
-            foreach (var body in bodies)
+            foreach (Body body in GetBodies())
             {
-                if (body.ContactList != null && body.ContactList.Contact.IsTouching)
-                {
-                    Body otherBody = body.ContactList.Other;
-                    if (!IgnoreCollisions.Contains(otherBody))
-                    {
-                        OnCollision?.Invoke(otherBody, world, new Vector2(0, 0));
-                    }
-                }
+                body.OnCollision += ForwardOnCollision;
             }
         }
+
+        public List<Body> IgnoreCollisions { get; set; } = new List<Body>();
 
         public bool Contains(Body body)
         {
