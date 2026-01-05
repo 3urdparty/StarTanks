@@ -1,10 +1,14 @@
-- [x] Explosions Change platform
-- Add Missiles
-- [x] Homing missiles
-- [ ] Grenades
-- [ ] Laser
-- [ ] Cluster Bomb
-- [ ] Shake tank / Platform on explosion
+- [ ] When tank dies, it explodes and dissapears
+- [ ] Add Computer AI
+- [ ] Add zoom and camera
+- [ ] Add game menu
+- [ ] Add PVP option or PVC option
+- [ ] Add game tutorial
+- [ ] Make different tank colors
+- [ ] Add background aesthetics
+- [ ] Add health bar and ammunition
+- [ ] Add game over when all tanks die, and zoom into the winner tank
+
 
 
 
@@ -14,9 +18,5 @@
 - [ ] Allow tank to rotate
 # Finalization
 To finalize the Project:
-- [ ] Add user healthbar and ammunitiion
-- [ ] Select tank type at start of game
-- [ ] allow up to 4 users
-- [ ] Add Computer as opponent
-- [ ] Die if fall of screen
-- [ ] winner get zoomed in
+- [ ] Remove all warnings from imports
+- [ ] Add Icon

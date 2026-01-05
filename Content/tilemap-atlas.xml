@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas>
+    <Regions>
+        <Texture name="tanks">images/TileSheet-v1</Texture>
+        <Region name="00" x="0" y="0" width="16" height="16" />
+        <Region name="01" x="16" y="0" width="16" height="16" />
+        <Region name="02" x="32" y="0" width="16" height="16" />
+        <Region name="10" x="0" y="16" width="16" height="16" />
+        <Region name="11" x="16" y="16" width="16" height="16" />
+        <Region name="12" x="32" y="16" width="16" height="16" />
+        <Region name="20" x="0" y="32" width="16" height="16" />
+        <Region name="21" x="16" y="32" width="16" height="16" />
+        <Region name="22" x="32" y="32" width="16" height="16" />
+
+        <Region name="inner-00" x="64" y="0" width="16" height="16" />
+        <Region name="inner-01" x="80" y="0" width="16" height="16" />
+        <Region name="inner-10" x="64" y="16" width="16" height="16" />
+        <Region name="inner-11" x="80" y="16" width="16" height="16" />
+
+        <Region name="inner-alt-00" x="32" y="32" width="16" height="16" />
+        <Region name="inner-alt-01" x="32" y="32" width="16" height="16" />
+        <Region name="inner-alt-10" x="32" y="32" width="16" height="16" />
+        <Region name="inner-alt-11" x="32" y="32" width="16" height="16" />
+    </Regions>
+</TextureAtlas>

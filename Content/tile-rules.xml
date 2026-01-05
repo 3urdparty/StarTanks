@@ -1,0 +1,23 @@
+<Tilemap name="platform_default"
+             atlas="tilemap-atlas.xml"
+             tileWidth="16"
+             tileHeight="16"
+             topThickness="1"
+             decorChance="0.08"
+             useAdjacency="false">
+
+  <Palette>
+    <Tile id="0" key="00" tags="TopSurface,Left,CornerTL"  weight="1.0" />
+    <Tile id="1" key="01" tags="TopSurface,Center"         weight="1.0" />
+    <Tile id="2" key="02" tags="TopSurface,Right,CornerTR" weight="1.0" />
+
+    <Tile id="10" key="10" tags="MiddleFill,Left"          weight="1.0" />
+    <Tile id="11" key="11" tags="MiddleFill,Center"        weight="1.0" />
+    <Tile id="12" key="12" tags="MiddleFill,Right,Decor"   weight="0.25" />
+
+    <Tile id="20" key="20" tags="BottomCap,Left,CornerBL"  weight="1.0" />
+    <Tile id="21" key="21" tags="BottomCap,Center"         weight="1.0" />
+    <Tile id="22" key="22" tags="BottomCap,Right,CornerBR" weight="1.0" />
+  </Palette>
+
+</Tilemap>
