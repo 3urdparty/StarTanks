@@ -9,18 +9,15 @@ namespace SpaceTanks
     {
         public void Seek(Vector2 desiredDir, float desiredAngle)
         {
-            
             var dir = new nkast.Aether.Physics2D.Common.Vector2(desiredDir.X, desiredDir.Y);
 
-            float thrust = 7.5f; 
+            float thrust = 7.5f;
 
             Body.ApplyForce(dir * thrust);
 
-            
             Body.Rotation = desiredAngle;
 
-            
-            float maxSpeed = 5f; 
+            float maxSpeed = 5f;
             var v = Body.LinearVelocity;
             if (v.LengthSquared() > maxSpeed * maxSpeed)
             {
@@ -43,7 +40,7 @@ namespace SpaceTanks
         public Vector2 DesiredDir { get; private set; }
         public float DesiredAngle { get; private set; }
 
-        private float _seekDelay = 0.5f; 
+        private float _seekDelay = 0.5f;
         private float _seekTimer = 0f;
         public bool IsSeeking { protected set; get; } = false;
 
@@ -64,7 +61,6 @@ namespace SpaceTanks
             Width = _sprite.Width;
             Height = _sprite.Height;
 
-            
             _explosionAnimation = atlas.GetAnimation("explosion-anim");
             _explosionAnimation.Loop = false;
         }
@@ -75,14 +71,11 @@ namespace SpaceTanks
 
             float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            
             _seekTimer += dt;
 
-            
             if (!IsSeeking && _seekTimer >= _seekDelay)
                 IsSeeking = true;
 
-            
             if (!IsSeeking || Target == null)
                 return;
 

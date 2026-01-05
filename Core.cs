@@ -21,37 +21,27 @@ public class Core : Game
 
     public Core(string title, int width, int height, bool fullScreen)
     {
-        
         if (s_instance != null)
         {
             throw new InvalidOperationException($"Only a single Core instance can be created");
         }
 
-        
         s_instance = this;
 
-        
         Graphics = new GraphicsDeviceManager(this);
 
-        
         Graphics.PreferredBackBufferWidth = width;
         Graphics.PreferredBackBufferHeight = height;
         Graphics.IsFullScreen = fullScreen;
 
-        
         Graphics.ApplyChanges();
 
-        
         Window.Title = title;
 
-        
-        
         Content = base.Content;
 
-        
         Content.RootDirectory = "Content";
 
-        
         IsMouseVisible = true;
     }
 
@@ -59,11 +49,8 @@ public class Core : Game
     {
         base.Initialize();
 
-        
-        
         GraphicsDevice = base.GraphicsDevice;
 
-        
         SpriteBatch = new SpriteBatch(GraphicsDevice);
     }
 }

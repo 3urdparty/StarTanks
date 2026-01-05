@@ -5,10 +5,6 @@ using nkast.Aether.Physics2D.Dynamics.Contacts;
 
 namespace SpaceTanks
 {
-    
-    
-    
-    
     public abstract class PhysicsEntity
     {
         public event OnCollisionEventHandler OnCollision;
@@ -56,17 +52,14 @@ namespace SpaceTanks
             if (bodies == null || bodies.Count == 0)
                 return;
 
-            
             Body primaryBody = bodies[0];
             if (primaryBody != null)
             {
-                
                 gameObject.Position = new Vector2(
                     primaryBody.Position.X * 100f,
                     primaryBody.Position.Y * 100f
                 );
 
-                
                 gameObject.Rotation = primaryBody.Rotation;
             }
         }

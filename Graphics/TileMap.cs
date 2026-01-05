@@ -8,8 +8,6 @@ using System.Xml.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 
-
-
 namespace SpaceTanks
 {
     public sealed class TileMap
@@ -72,7 +70,6 @@ namespace SpaceTanks
             {
                 s = s.Trim();
 
-                
                 return s.ToLowerInvariant() switch
                 {
                     "top" => TileTag.TopSurface,
@@ -80,7 +77,7 @@ namespace SpaceTanks
 
                     "mid" => TileTag.MiddleFill,
                     "middle" => TileTag.MiddleFill,
-                    "inner" => TileTag.MiddleFill, 
+                    "inner" => TileTag.MiddleFill,
 
                     "bottom" => TileTag.BottomCap,
                     "bottomcap" => TileTag.BottomCap,
@@ -114,14 +111,12 @@ namespace SpaceTanks
 
             foreach (var p in parts)
             {
-                
                 if (Enum.TryParse<TileTag>(p.Trim(), true, out var t))
                 {
                     result |= t;
                     continue;
                 }
 
-                
                 result |= MapAlias(p);
             }
 
@@ -176,7 +171,6 @@ namespace SpaceTanks
             );
             bool useAdjacency = bool.Parse(root.Attribute("useAdjacency")?.Value ?? "false");
 
-            
             TextureAtlas atlas = TextureAtlas.FromFile(content, atlasFile);
 
             var set = new TileMap(
@@ -192,7 +186,7 @@ namespace SpaceTanks
             XElement paletteEl =
                 root.Elements().FirstOrDefault(e => e.Name.LocalName == "Palette")
                 ?? throw new InvalidDataException("Missing <Palette>.");
-            
+
             foreach (var tileEl in paletteEl.Elements().Where(e => e.Name.LocalName == "Tile"))
             {
                 int id = int.Parse(
@@ -216,7 +210,6 @@ namespace SpaceTanks
                 set.AddTile(new Tile(id, key, region, tags, weight));
             }
 
-            
             XElement adjEl = root.Elements().FirstOrDefault(e => e.Name.LocalName == "Adjacency");
             if (adjEl != null)
             {

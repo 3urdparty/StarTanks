@@ -49,7 +49,6 @@ namespace SpaceTanks
         {
             base.Update(gameObject);
         }
-
     }
 
     public class Grenade : Projectile

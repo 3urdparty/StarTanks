@@ -8,26 +8,17 @@ using MonoGameVector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace SpaceTanks
 {
-    
-    
-    
     public static class AetherBoundsRenderer
     {
         private static Texture2D _pixelTexture;
-        private const float PixelScale = 100f; 
+        private const float PixelScale = 100f;
 
-        
-        
-        
         public static void Initialize(GraphicsDevice graphicsDevice)
         {
             _pixelTexture = new Texture2D(graphicsDevice, 1, 1);
             _pixelTexture.SetData(new[] { Color.White });
         }
 
-        
-        
-        
         public static void DrawBodyAABB(
             SpriteBatch spriteBatch,
             Body body,
@@ -38,7 +29,6 @@ namespace SpaceTanks
             if (body == null || body.FixtureList.Count == 0)
                 return;
 
-            
             MonoGameVector2 minPoint = new MonoGameVector2(float.MaxValue, float.MaxValue);
             MonoGameVector2 maxPoint = new MonoGameVector2(float.MinValue, float.MinValue);
 
@@ -63,7 +53,6 @@ namespace SpaceTanks
                 {
                     foreach (var vertex in polygon.Vertices)
                     {
-                        
                         float rotatedX = (float)(
                             vertex.X * Math.Cos(body.Rotation) - vertex.Y * Math.Sin(body.Rotation)
                         );
@@ -71,7 +60,6 @@ namespace SpaceTanks
                             vertex.X * Math.Sin(body.Rotation) + vertex.Y * Math.Cos(body.Rotation)
                         );
 
-                        
                         MonoGameVector2 worldPos = new MonoGameVector2(
                             (body.Position.X + rotatedX) * PixelScale,
                             (body.Position.Y + rotatedY) * PixelScale
@@ -85,16 +73,12 @@ namespace SpaceTanks
                 }
             }
 
-            
             if (minPoint.X != float.MaxValue && maxPoint.X != float.MinValue)
             {
                 DrawRectangle(spriteBatch, minPoint, maxPoint, color, thickness);
             }
         }
 
-        
-        
-        
         public static void DrawWorldAABBs(
             SpriteBatch spriteBatch,
             World world,
@@ -113,9 +97,6 @@ namespace SpaceTanks
             }
         }
 
-        
-        
-        
         private static void DrawRectangle(
             SpriteBatch spriteBatch,
             MonoGameVector2 minPoint,
@@ -124,7 +105,6 @@ namespace SpaceTanks
             float thickness
         )
         {
-            
             DrawLine(
                 spriteBatch,
                 minPoint,
@@ -132,7 +112,7 @@ namespace SpaceTanks
                 color,
                 thickness
             );
-            
+
             DrawLine(
                 spriteBatch,
                 new MonoGameVector2(maxPoint.X, minPoint.Y),
@@ -140,7 +120,7 @@ namespace SpaceTanks
                 color,
                 thickness
             );
-            
+
             DrawLine(
                 spriteBatch,
                 maxPoint,
@@ -148,7 +128,7 @@ namespace SpaceTanks
                 color,
                 thickness
             );
-            
+
             DrawLine(
                 spriteBatch,
                 new MonoGameVector2(minPoint.X, maxPoint.Y),
@@ -158,9 +138,6 @@ namespace SpaceTanks
             );
         }
 
-        
-        
-        
         private static void DrawLine(
             SpriteBatch spriteBatch,
             MonoGameVector2 start,

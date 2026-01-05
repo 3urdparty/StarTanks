@@ -97,13 +97,11 @@ namespace SpaceTanks
                     XDocument doc = XDocument.Load(reader);
                     XElement root = doc.Root;
 
-                    
                     var regionsBlocks = root.Elements("Regions");
                     if (regionsBlocks != null)
                     {
                         foreach (var regionsBlock in regionsBlocks)
                         {
-                            
                             string texturePath = regionsBlock.Element("Texture")?.Value;
                             string textureName = regionsBlock
                                 .Element("Texture")
@@ -112,20 +110,17 @@ namespace SpaceTanks
 
                             if (!string.IsNullOrEmpty(texturePath))
                             {
-                                
                                 if (string.IsNullOrEmpty(textureName))
                                 {
                                     textureName = texturePath;
                                 }
 
-                                
                                 if (!atlas._textures.ContainsKey(textureName))
                                 {
                                     Texture2D texture = content.Load<Texture2D>(texturePath);
                                     atlas.AddTexture(textureName, texture);
                                 }
 
-                                
                                 var regions = regionsBlock.Elements("Region");
                                 if (regions != null)
                                 {
@@ -151,7 +146,6 @@ namespace SpaceTanks
                         }
                     }
 
-                    
                     var animationsElement = root.Element("Animations");
                     if (animationsElement != null)
                     {
@@ -188,17 +182,5 @@ namespace SpaceTanks
                 }
             }
         }
-
-        
-        
-        
-        
-        
-
-        
-        
-        
-        
-        
     }
 }

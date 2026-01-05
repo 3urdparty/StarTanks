@@ -4,7 +4,7 @@ namespace SpaceTanks
 {
     public sealed class Camera2D
     {
-        public Vector2 Position; 
+        public Vector2 Position;
         public float Zoom = 1f;
         public float Rotation = 0f;
 

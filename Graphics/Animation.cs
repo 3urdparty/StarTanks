@@ -8,14 +8,8 @@ namespace SpaceTanks
         public List<TextureRegion> Frames { get; set; }
         public TimeSpan Delay { get; set; }
 
-        
-        
-        
         public bool Loop { get; set; } = true;
 
-        
-        
-        
         public bool HasFinished { get; private set; } = false;
 
         private int _currentFrame = 0;
@@ -34,9 +28,6 @@ namespace SpaceTanks
             Loop = loop;
         }
 
-        
-        
-        
         public void Update(float deltaTime)
         {
             if (Frames == null || Frames.Count == 0 || HasFinished)
@@ -57,8 +48,8 @@ namespace SpaceTanks
                     }
                     else
                     {
-                        _currentFrame = Frames.Count - 1; 
-                        HasFinished = true; 
+                        _currentFrame = Frames.Count - 1;
+                        HasFinished = true;
                     }
                 }
             }
@@ -71,9 +62,6 @@ namespace SpaceTanks
             HasFinished = false;
         }
 
-        
-        
-        
         public TextureRegion CurrentFrame
         {
             get

@@ -44,10 +44,10 @@ public class SpaceShip
         Vector2 thruster_pos = new Vector2(16.0f, 16.0f);
         _thruster.Draw(
             spriteBatch,
-            new Vector2(position.X + 13f, position.Y + 24f), 
+            new Vector2(position.X + 13f, position.Y + 24f),
             Color,
-            MathHelper.Pi, 
-            new Vector2(16f, 16f), 
+            MathHelper.Pi,
+            new Vector2(16f, 16f),
             Scale,
             Effects,
             LayerDepth

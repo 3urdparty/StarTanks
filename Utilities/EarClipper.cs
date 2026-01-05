@@ -18,10 +18,6 @@ public static class EarClipper
         }
     }
 
-    
-    
-    
-    
     public static List<Triangle> Triangulate(IReadOnlyList<Vector2> polygon)
     {
         if (polygon == null)
@@ -29,7 +25,6 @@ public static class EarClipper
         if (polygon.Count < 3)
             throw new ArgumentException("Polygon must have at least 3 vertices.");
 
-        
         var pts = new List<Vector2>(polygon.Count);
         for (int i = 0; i < polygon.Count; i++)
             pts.Add(polygon[i]);
@@ -37,7 +32,6 @@ public static class EarClipper
         if (pts.Count >= 2 && NearlyEqual(pts[0], pts[pts.Count - 1]))
             pts.RemoveAt(pts.Count - 1);
 
-        
         for (int i = pts.Count - 1; i > 0; i--)
         {
             if (NearlyEqual(pts[i], pts[i - 1]))
@@ -46,11 +40,9 @@ public static class EarClipper
         if (pts.Count < 3)
             throw new ArgumentException("Polygon degenerated after removing duplicates.");
 
-        
         if (SignedArea(pts) < 0f)
             pts.Reverse();
 
-        
         var indices = new List<int>(pts.Count);
         for (int i = 0; i < pts.Count; i++)
             indices.Add(i);
@@ -75,7 +67,6 @@ public static class EarClipper
                 if (!IsConvex(a, b, c))
                     continue;
 
-                
                 bool anyInside = false;
                 for (int j = 0; j < indices.Count; j++)
                 {
@@ -93,7 +84,6 @@ public static class EarClipper
                 if (anyInside)
                     continue;
 
-                
                 result.Add(new Triangle(a, b, c));
                 indices.RemoveAt(i);
                 earFound = true;
@@ -102,20 +92,17 @@ public static class EarClipper
 
             if (!earFound)
             {
-                
                 throw new InvalidOperationException(
                     "Failed to triangulate polygon. Ensure it is simple (non self-intersecting) and non-degenerate."
                 );
             }
 
-            
             if (++guard > 100000)
                 throw new InvalidOperationException(
                     "Triangulation guard triggered (bad polygon input)."
                 );
         }
 
-        
         {
             var a = pts[indices[0]];
             var b = pts[indices[1]];
@@ -140,7 +127,6 @@ public static class EarClipper
 
     private static bool IsConvex(Vector2 a, Vector2 b, Vector2 c)
     {
-        
         return Cross(b - a, c - b) > 1e-7f;
     }
 
@@ -148,7 +134,6 @@ public static class EarClipper
 
     private static bool PointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
     {
-        
         float c1 = Cross(b - a, p - a);
         float c2 = Cross(c - b, p - b);
         float c3 = Cross(a - c, p - c);
@@ -156,7 +141,6 @@ public static class EarClipper
         bool hasNeg = (c1 < 0f) || (c2 < 0f) || (c3 < 0f);
         bool hasPos = (c1 > 0f) || (c2 > 0f) || (c3 > 0f);
 
-        
         return !(hasNeg && hasPos);
     }
 

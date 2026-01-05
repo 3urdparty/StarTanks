@@ -10,7 +10,7 @@ namespace SpaceTanks
         public int Height { get; }
         public List<Vector2> Polygon { get; }
         public int[,] TileIds { get; }
-        public List<Vector2> Surface { get; } 
+        public List<Vector2> Surface { get; }
 
         public PlatformDefinition(
             int width,

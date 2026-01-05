@@ -4,43 +4,30 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace SpaceTanks
 {
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     public sealed class Sky
     {
-        private readonly int _tileSize; 
+        private readonly int _tileSize;
         private readonly int _viewWidth;
         private readonly int _viewHeight;
 
         private int _gridW;
         private int _gridH;
 
-        private TextureRegion[] _tiles; 
-        private int[] _tileIndices; 
+        private TextureRegion[] _tiles;
+        private int[] _tileIndices;
         private readonly Random _rng;
 
-        
-        
         private float[] _weights = new float[]
         {
-            0.90f, 
-            0.02f, 
-            0.03f, 
-            0.02f, 
-            0.01f, 
-            0.015f, 
-            0.005f, 
+            0.90f,
+            0.02f,
+            0.03f,
+            0.02f,
+            0.01f,
+            0.015f,
+            0.005f,
         };
 
-        
         private float[] _cdf;
 
         public Sky(int viewWidth, int viewHeight, int tileSize = 16, int? seed = null)
@@ -53,10 +40,6 @@ namespace SpaceTanks
             RecomputeGrid();
         }
 
-        
-        
-        
-        
         public void SetWeights(params float[] weights)
         {
             if (weights == null || weights.Length != 7)
@@ -74,7 +57,7 @@ namespace SpaceTanks
                 _weights[i] = Math.Max(0f, weights[i]) / sum;
 
             BuildCdf();
-            Regenerate(); 
+            Regenerate();
         }
 
         public void Initialize(
@@ -97,21 +80,13 @@ namespace SpaceTanks
             Regenerate();
         }
 
-        
-        
-        
         public void Resize(int newViewWidth, int newViewHeight)
         {
-            
-            
             throw new NotSupportedException(
                 "Recreate Sky with the new viewport dimensions in this implementation."
             );
         }
 
-        
-        
-        
         public void Regenerate()
         {
             if (_tiles == null)
@@ -128,21 +103,14 @@ namespace SpaceTanks
             }
         }
 
-        
-        
-        
-        
-        
         public void Draw(SpriteBatch spriteBatch, Vector2 cameraWorldTopLeft)
         {
             if (_tiles == null || _tileIndices == null)
                 return;
 
-            
             int offsetX = Mod((int)cameraWorldTopLeft.X, _tileSize);
             int offsetY = Mod((int)cameraWorldTopLeft.Y, _tileSize);
 
-            
             int startX = -offsetX - _tileSize;
             int startY = -offsetY - _tileSize;
 
@@ -153,7 +121,6 @@ namespace SpaceTanks
             {
                 for (int gx = 0; gx < tilesX; gx++)
                 {
-                    
                     int cellX = Mod(gx, _gridW);
                     int cellY = Mod(gy, _gridH);
                     int idx = _tileIndices[cellY * _gridW + cellX];
@@ -178,8 +145,6 @@ namespace SpaceTanks
 
         private void RecomputeGrid()
         {
-            
-            
             _gridW = Math.Max(8, (_viewWidth / _tileSize) + 12);
             _gridH = Math.Max(8, (_viewHeight / _tileSize) + 12);
         }
@@ -189,7 +154,6 @@ namespace SpaceTanks
             _cdf = new float[7];
             float running = 0f;
 
-            
             float sum = 0f;
             for (int i = 0; i < 7; i++)
                 sum += Math.Max(0f, _weights[i]);
@@ -202,13 +166,12 @@ namespace SpaceTanks
                 _cdf[i] = running;
             }
 
-            
             _cdf[6] = 1f;
         }
 
         private int SampleWeightedIndex()
         {
-            float r = (float)_rng.NextDouble(); 
+            float r = (float)_rng.NextDouble();
             for (int i = 0; i < _cdf.Length; i++)
             {
                 if (r <= _cdf[i])

@@ -50,17 +50,13 @@ namespace SpaceTanks
             projectile.PhysicsEntityRef = this;
         }
 
-        
-
         public override void Update(GameObject gameObject)
         {
             Projectile projectile = (Projectile)gameObject;
             if (Body != null)
             {
-                
                 projectile.Position = new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
 
-                
                 projectile.Rotation = Body.Rotation;
             }
         }
@@ -78,7 +74,6 @@ namespace SpaceTanks
 
     public abstract class Projectile : GameObject
     {
-
         protected TextureRegion _sprite;
         public PhysicsEntity PhysicsEntityRef { get; internal set; }
 
@@ -91,7 +86,6 @@ namespace SpaceTanks
         public override void Draw(SpriteBatch spriteBatch)
         {
             {
-                
                 _sprite.Draw(
                     spriteBatch,
                     Position,

@@ -24,12 +24,8 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
-    <!-- <PackageReference Include="Genbox.VelcroPhysics" Version="0.1.0-alpha.2" /> -->
     <PackageReference Include="MonoGame.Extended" Version="5.2.0" />
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.*" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.*" />
   </ItemGroup>
-  <!-- <ItemGroup> -->
-  <!--   <ProjectReference Include="..\MonoGameLibrary\MonoGameLibrary.csproj" /> -->
-  <!-- </ItemGroup> -->
 </Project>

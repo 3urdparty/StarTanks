@@ -25,13 +25,27 @@ namespace SpaceTanks
                 throw new ArgumentNullException(nameof(q.DepthFromTop));
 
             var ids = new int[rows, cols];
-            int fallbackId =
-                ruleTiles.TilesById.Count > 0 ? ruleTiles.TilesById.Keys.First() : 0;
+            int fallbackId = ruleTiles.TilesById.Count > 0 ? ruleTiles.TilesById.Keys.First() : 0;
             var rng = new Random(seed);
 
-            int topLeftId = ResolveTileId(ruleTiles, rng, TileTag.TopSurface | TileTag.Left, fallbackId);
-            int topCenterId = ResolveTileId(ruleTiles, rng, TileTag.TopSurface | TileTag.Center, fallbackId);
-            int topRightId = ResolveTileId(ruleTiles, rng, TileTag.TopSurface | TileTag.Right, fallbackId);
+            int topLeftId = ResolveTileId(
+                ruleTiles,
+                rng,
+                TileTag.TopSurface | TileTag.Left,
+                fallbackId
+            );
+            int topCenterId = ResolveTileId(
+                ruleTiles,
+                rng,
+                TileTag.TopSurface | TileTag.Center,
+                fallbackId
+            );
+            int topRightId = ResolveTileId(
+                ruleTiles,
+                rng,
+                TileTag.TopSurface | TileTag.Right,
+                fallbackId
+            );
             int topCornerLeftId = ResolveTileId(
                 ruleTiles,
                 rng,
@@ -302,9 +316,7 @@ namespace SpaceTanks
 
         private static int ResolveTileId(TileMap map, Random rng, TileTag tags, int fallback)
         {
-            var candidates = map.TilesById.Values
-                .Where(t => (t.Tags & tags) == tags)
-                .ToList();
+            var candidates = map.TilesById.Values.Where(t => (t.Tags & tags) == tags).ToList();
             if (candidates.Count == 0)
                 return fallback;
             if (candidates.Count == 1)

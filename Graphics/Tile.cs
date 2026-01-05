@@ -18,7 +18,6 @@ namespace SpaceTanks
         public TileTag Tags { get; }
         public float Weight { get; }
 
-        
         public HashSet<int> AllowAbove { get; } = new();
         public HashSet<int> AllowBelow { get; } = new();
         public HashSet<int> AllowLeft { get; } = new();

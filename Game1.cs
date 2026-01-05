@@ -16,7 +16,7 @@ namespace SpaceTanks;
 
 public class Game1 : Core
 {
-private List<GameObject> _gameObjects = new List<GameObject>();
+    private List<GameObject> _gameObjects = new List<GameObject>();
     private List<PhysicsEntity> _bodies = new List<PhysicsEntity>();
     private Tank _playerTank;
     private TankPhysics _playerTankPhysics;
@@ -249,7 +249,6 @@ private List<GameObject> _gameObjects = new List<GameObject>();
                 go.Draw(SpriteBatch);
         }
 
-        
         SpriteBatch.End();
 
         SpriteBatch.Begin(
@@ -332,11 +331,7 @@ private List<GameObject> _gameObjects = new List<GameObject>();
         return true;
     }
 
-    private bool TryFireHomingMissile(
-        Tank shooter,
-        TankPhysics shooterPhysics,
-        Tank targetTank
-    )
+    private bool TryFireHomingMissile(Tank shooter, TankPhysics shooterPhysics, Tank targetTank)
     {
         if (shooter == null || shooterPhysics == null)
             return false;
@@ -364,7 +359,11 @@ private List<GameObject> _gameObjects = new List<GameObject>();
         projectile.Rotation = shooter.Gun.Rotation;
         HomingMissilePhysics projectilePhysics = new HomingMissilePhysics();
         projectilePhysics.Initialize(_physicsWorld, projectile);
-        projectilePhysics.Body.OnCollision += (Fixture fixtureA, Fixture fixtureB, Contact contact) =>
+        projectilePhysics.Body.OnCollision += (
+            Fixture fixtureA,
+            Fixture fixtureB,
+            Contact contact
+        ) =>
         {
             Body otherBody = fixtureB.Body;
 

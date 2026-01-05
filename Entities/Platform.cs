@@ -30,8 +30,6 @@ namespace SpaceTanks
 
             Body = world.CreateBody(physicsPos, 0, BodyType.Static);
             Body.Tag = "Platform";
-
-            
         }
 
         public void Construct(World world, Platform platform)
@@ -41,7 +39,6 @@ namespace SpaceTanks
                 platform.Position.Y / 100f
             );
 
-            
             if (Body != null)
             {
                 world.Remove(Body);
@@ -52,7 +49,6 @@ namespace SpaceTanks
             Body.Tag = "Platform";
             CreateBodyFromVertices(Body, platform.GetVertices(), 10f);
 
-            
             Body.OnCollision += ForwardOnCollision;
         }
 
@@ -61,7 +57,6 @@ namespace SpaceTanks
             if (gameVertices == null || gameVertices.Count < 3)
                 return;
 
-            
             var triangles = EarClipper.Triangulate(gameVertices);
 
             var parts = new List<nkast.Aether.Physics2D.Common.Vertices>(triangles.Count);
@@ -85,7 +80,6 @@ namespace SpaceTanks
 
         private AetherVector2 ConvertToPhysics(Vector2 vertex, float halfWidth, float halfHeight)
         {
-            
             float localX = (vertex.X - halfWidth) / 100f;
             float localY = (vertex.Y - halfHeight) / 100f;
             return new AetherVector2(localX, localY);
@@ -96,9 +90,6 @@ namespace SpaceTanks
             return new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
         }
 
-        
-        
-        
         public void Sync(Platform platform)
         {
             if (Body == null)
@@ -112,7 +103,6 @@ namespace SpaceTanks
                 return;
             platform.Shake(6f, 0.18f);
 
-            
             platform.Position = new Vector2(Body.Position.X * 100f, Body.Position.Y * 100f);
             platform.Rotation = Body.Rotation;
         }
@@ -122,30 +112,22 @@ namespace SpaceTanks
     {
         public bool NeedsRetile { get; private set; } = false;
 
-        
         public event Action<Platform> RetileRequested;
         private GraphicsDevice _gd;
 
         private RenderTarget2D _fillRT;
         private bool _fillDirty = true;
 
-        
         private readonly List<Vector2> _surface = new();
         private const float SurfaceStep = 10f;
 
-        
         private readonly List<Vector2> _poly = new();
 
-        
         private RenderTarget2D _maskRT;
         private bool _maskDirty = true;
 
-        
         private BasicEffect _maskEffect2D;
 
-        
-        
-        
         private Effect _clipEffect;
 
         private float _shakeTimeLeft = 0f;
@@ -180,11 +162,9 @@ namespace SpaceTanks
             _ruleTiles = ruleTiles;
             _tileIds = def.TileIds;
 
-            
             _poly.Clear();
             _poly.AddRange(def.Polygon);
 
-            
             _surface.Clear();
             _surface.AddRange(def.Surface);
 
@@ -198,7 +178,6 @@ namespace SpaceTanks
             Height = height;
             Origin = new Vector2(Width, Height) * 0.5f;
 
-            
             _surface.Clear();
             for (float x = 0; x <= Width; x += SurfaceStep)
                 _surface.Add(new Vector2(x, -Height));
@@ -211,10 +190,6 @@ namespace SpaceTanks
             _gd = graphicsDevice;
 
             _ruleTiles = TileMap.FromFile(content, "tile-rules.xml");
-
-            
-            
-            
 
             _maskRT = new RenderTarget2D(
                 _gd,
@@ -235,7 +210,7 @@ namespace SpaceTanks
 
             _fillDirty = true;
             _maskDirty = true;
-            
+
             _maskRT = new RenderTarget2D(
                 _gd,
                 Width,
@@ -245,7 +220,6 @@ namespace SpaceTanks
                 DepthFormat.None
             );
 
-            
             _maskEffect2D = new BasicEffect(_gd)
             {
                 VertexColorEnabled = true,
@@ -255,16 +229,11 @@ namespace SpaceTanks
                 Projection = Matrix.CreateOrthographicOffCenter(0, Width, Height, 0, 0, 1),
             };
 
-            
-            
             _clipEffect = content.Load<Effect>("MaskedTile");
 
             PrepareRenderTargets();
         }
 
-        
-        
-        
         public void AddCrater(Vector2 craterCenterLocal, float craterTopWidth, float craterDepth)
         {
             if (craterTopWidth <= 0f || craterDepth <= 0f)
@@ -276,21 +245,18 @@ namespace SpaceTanks
             float left = MathF.Max(0f, cx - halfW);
             float right = MathF.Min(Width, cx + halfW);
 
-            
             for (int i = 0; i < _surface.Count; i++)
             {
                 float x = _surface[i].X;
                 if (x < left || x > right)
                     continue;
 
-                float t = (x - cx) / halfW; 
-                float w = 1f - (t * t); 
+                float t = (x - cx) / halfW;
+                float w = 1f - (t * t);
                 float delta = craterDepth * w;
 
-                
                 float newY = _surface[i].Y + delta;
 
-                
                 newY = MathF.Min(newY, -1f);
 
                 _surface[i] = new Vector2(x, newY);
@@ -299,10 +265,8 @@ namespace SpaceTanks
             RebuildPolygonFromSurface();
             _maskDirty = true;
 
-            
             NeedsRetile = true;
 
-            
             RetileRequested?.Invoke(this);
         }
 
@@ -387,7 +351,6 @@ namespace SpaceTanks
             if (_maskDirty)
                 RebuildMaskRT();
 
-            
             if (!NeedsRetile && _fillDirty)
                 RebuildFillRT();
         }
@@ -396,24 +359,18 @@ namespace SpaceTanks
         {
             _poly.Clear();
 
-            
             _poly.Add(new Vector2(0, 0));
             _poly.Add(new Vector2(Width, 0));
 
-            
             for (int i = _surface.Count - 1; i >= 0; i--)
                 _poly.Add(_surface[i]);
 
-            
             if (_surface.Count > 0 && _surface[0].X != 0f)
                 _poly.Add(new Vector2(0f, _surface[0].Y));
         }
 
         public List<Vector2> GetVertices() => _poly;
 
-        
-        
-        
         private void RebuildMaskRT()
         {
             if (_gd == null || _maskRT == null || _maskEffect2D == null)
@@ -422,7 +379,6 @@ namespace SpaceTanks
             _gd.SetRenderTarget(_maskRT);
             _gd.Clear(Color.Transparent);
 
-            
             var tris = EarClipper.Triangulate(_poly);
 
             if (tris == null || tris.Count == 0)
@@ -432,7 +388,6 @@ namespace SpaceTanks
                 return;
             }
 
-            
             var vtx = new VertexPositionColor[tris.Count * 3];
 
             for (int i = 0; i < tris.Count; i++)
@@ -454,8 +409,6 @@ namespace SpaceTanks
             _maskDirty = false;
         }
 
-        
-        
         private Vector2 ToRT(Vector2 local) => new Vector2(local.X, local.Y + Height);
 
         public override void Draw(SpriteBatch spriteBatch)
@@ -483,11 +436,9 @@ namespace SpaceTanks
             {
                 _shakeTimeLeft -= dt;
 
-                
                 float t = _shakeTimeLeft / Math.Max(_shakeDuration, 0.0001f);
                 float amp = _shakeMagnitude * t;
 
-                
                 float ox = ((float)_rng.NextDouble() * 2f - 1f) * amp;
                 float oy = ((float)_rng.NextDouble() * 2f - 1f) * amp;
                 _shakeOffset = new Vector2(ox, oy);

@@ -47,7 +47,6 @@ namespace SpaceTanks
             Width = _sprite.Width;
             Height = _sprite.Height;
 
-            
             _explosionAnimation = atlas.GetAnimation("explosion-anim");
             _explosionAnimation.Loop = false;
         }
@@ -71,7 +70,6 @@ namespace SpaceTanks
         {
             if (_isExploding)
             {
-                
                 if (_explosionAnimation.CurrentFrame != null)
                 {
                     _explosionAnimation.CurrentFrame.Draw(
