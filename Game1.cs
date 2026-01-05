@@ -111,6 +111,7 @@ public class Game1 : Core
         var options = new PlatformGenerator.Options
         {
             Topology = PlatformTopology.RectangularHillsAndHoles,
+            // Seed = new Random().Next(), Toggle this to make this random platform generation
             Seed = 1337,
         };
 
