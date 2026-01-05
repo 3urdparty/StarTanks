@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using nkast.Aether.Physics2D.Dynamics;
@@ -76,6 +77,7 @@ namespace SpaceTanks
     {
         protected TextureRegion _sprite;
         public PhysicsEntity PhysicsEntityRef { get; internal set; }
+        public SoundEffect ExplosionSound { get; set; }
 
         public Projectile() { }
 

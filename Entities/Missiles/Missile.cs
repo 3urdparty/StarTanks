@@ -99,6 +99,7 @@ namespace SpaceTanks
             {
                 _isExploding = true;
                 _explosionAnimation.Reset();
+                ExplosionSound?.Play();
             }
         }
     }

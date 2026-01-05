@@ -215,6 +215,7 @@ namespace SpaceTanks
             }
 
             _explosionAnim.Reset();
+            ExplosionSound?.Play();
             Exploded?.Invoke(this, Position);
         }
     }

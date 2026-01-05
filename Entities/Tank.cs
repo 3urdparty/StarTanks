@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using nkast.Aether.Physics2D.Dynamics;
@@ -302,6 +303,7 @@ namespace SpaceTanks
         public bool IsTakingDamage => _elapsed < _damageCooldown;
 
         private float Health { set; get; } = 100;
+        public SoundEffect ExplosionSound { get; set; }
 
         public Tank(
             ContentManager content,
@@ -464,6 +466,7 @@ namespace SpaceTanks
                 return;
             _exploding = true;
             _deathExplosion.Reset();
+            ExplosionSound?.Play();
         }
 
         public void SetTrajectoryInput(bool active)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGameLibrary;
@@ -34,6 +35,7 @@ public class Game1 : Core
 
     private readonly Queue<Action> _postStep = new();
     private readonly Dictionary<Body, Tank> _projectileOwners = new();
+    private SoundEffect _explosionSound;
 
     public Game1()
         : base("Space Tanks", 1280, 720, false) { }
@@ -154,6 +156,11 @@ public class Game1 : Core
     protected override void LoadContent()
     {
         _platformClipEffect = Content.Load<Effect>("MaskedTile");
+        _explosionSound = Content.Load<SoundEffect>("soundfx/pixel-explosion");
+        if (_playerTank != null)
+            _playerTank.ExplosionSound = _explosionSound;
+        if (_aiTank != null)
+            _aiTank.ExplosionSound = _explosionSound;
     }
 
     protected override void Update(GameTime gameTime)
@@ -281,6 +288,7 @@ public class Game1 : Core
         shooter.Gun.Shoot();
         Missile projectile = new Missile();
         projectile.Initialize(Content);
+        projectile.ExplosionSound = _explosionSound;
 
         projectile.Position = shooter.Gun.Position + new MGVector2(0, -shooter.Gun.Width);
         projectile.Rotation = shooter.Gun.Rotation;
@@ -354,6 +362,7 @@ public class Game1 : Core
         projectile.Target = resolvedTarget;
 
         projectile.Initialize(Content);
+        projectile.ExplosionSound = _explosionSound;
 
         projectile.Position = shooter.Gun.Position + new MGVector2(0, -shooter.Gun.Width);
         projectile.Rotation = shooter.Gun.Rotation;
@@ -419,6 +428,7 @@ public class Game1 : Core
         shooter.Gun.Shoot();
         Grenade grenade = new Grenade();
         grenade.Initialize(Content);
+        grenade.ExplosionSound = _explosionSound;
 
         grenade.Position = shooter.Gun.Position + new MGVector2(0, -shooter.Gun.Width);
         grenade.Rotation = shooter.Gun.Rotation;
